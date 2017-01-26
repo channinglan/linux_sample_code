@@ -1,0 +1,65 @@
+http://pydoing.blogspot.tw/2015/02/javag-0102.html
+
+
+
+
+JAVA 安裝
+
+
+http://bruce30262.pixnet.net/blog/post/87567906-%5B%E7%9F%A5%E8%AD%98%5D%E5%9C%A8ubuntu-linux-11.10%E5%AE%89%E8%A3%9D%E4%B8%A6%E8%A8%AD%E5%AE%9Ajava%E7%92%B0%E5%A2%83
+
+sudo apt-get install openjdk-7-jre
+sudo apt-get install openjdk-7-jdk
+
+//---------------------------
+
+root@test-All-Series:/home/share/java/01hello# javac hello.java
+hello.java:1: error: unmappable character for encoding UTF8    
+
+
+http://chshman310222.pixnet.net/blog/post/174134316-%5Bjava%5D-%E9%8C%AF%E8%AA%A4%E8%A7%A3%E6%B1%BA%3A-unmappable-character-for-encoding-ms950
+在JAVA編譯程式時，則是採用作業系統預設的編碼(也就是MS950)
+所以，針對這個問題的解決辦法有二:                                      
+1. 在編譯時指定採用的編碼為UTF8，EX: 	javac -encoding utf-8 example.java
+                                    	javac -encoding ms950 example.java  
+                                    	
+                                    	
+  
+  
+  
+                                    	
+ hello is public, should be declared in a file named hello.java                                 	
+                                    	
+Java的規定 file name 必須與 class name 相同                                                        	                      
+所以如果你的 class name = hello , 那麼你的檔名必須是 hello.java
+( 注意看你的編譯器回應給你的錯誤訊息...上面說的很明白....      
+hello is public, should be declared in a file named hello.java)
+
+
+
+
+
+設定 JAVA_HOME 的路徑 (PATH)       
+                                   
+用 root 權限開啟 /etc/profile      
+sudo gedit /etc/profile            
+                                   
+在最後面加入以下內容：             
+                                   
+JAVA_HOME=/usr/local/java/jdk1.7.0 
+PATH=$PATH:$HOME/bin:$JAVA_HOME/bin
+JAVA_HOME=/usr/local/java/jre1.7.0 
+PATH=$PATH:$HOME/bin:$JAVA_HOME/bin
+export JAVA_HOME                   
+export PATH                        
+
+
+
+
+
+root@test-All-Series:/home/share/java/01hello# java hello.class
+Error: Could not find or load main class hello.class
+root@test-All-Series:/home/share/java/01hello# java -classpath . hello
+
+java.lang.Object@717da562
+程式執行結束
