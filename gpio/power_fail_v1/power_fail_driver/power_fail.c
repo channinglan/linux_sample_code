@@ -10,7 +10,7 @@
 #define MISC_DEV_EN	1
 	#define SIG_EN	1
 
-#define IEI_GPIO_VERSION		"0.0.1"
+#define GPIO_VERSION		"0.0.1"
 
 
 #define KEY_POWER_INT 253
@@ -132,12 +132,12 @@ static irqreturn_t r_irq_handler(int irq, void *dev_id)
 #if (MISC_DEV_EN == 1)
 
 
-static int iei_gpio_open(struct inode *inode, struct file *file)
+static int gpio_open(struct inode *inode, struct file *file)
 {
         return 0;
 };
 
-static int iei_gpio_release(struct inode *inode, struct file *file)
+static int gpio_release(struct inode *inode, struct file *file)
 {
         return 0;
 };
@@ -178,7 +178,7 @@ static int write_pid(int pid)
 
 
 
-static long iei_gpio_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+static long gpio_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
 	//gpio_params gpio;
 	unsigned int pid;
@@ -208,17 +208,17 @@ static long iei_gpio_ioctl(struct file *file, unsigned int cmd, unsigned long ar
 
 
 
-static const struct file_operations iei_gpio_fops = {
+static const struct file_operations gpio_fops = {
 	.owner 		= THIS_MODULE,
-	.unlocked_ioctl = iei_gpio_ioctl,
-	.open		= iei_gpio_open,
-	.release	= iei_gpio_release,
+	.unlocked_ioctl = gpio_ioctl,
+	.open		= gpio_open,
+	.release	= gpio_release,
 };
 
-static struct miscdevice iei_gpio_miscdev = {
+static struct miscdevice gpio_miscdev = {
 	.minor		= MISC_DYNAMIC_MINOR,
 	.name		= POWER_FAIL_NAME,
-	.fops		= &iei_gpio_fops,
+	.fops		= &gpio_fops,
 };
 
 #endif
@@ -297,8 +297,8 @@ void pxm_io_int_config(void)
 	
 	
 #if (MISC_DEV_EN == 1)	
-	printk(KERN_INFO "IEI GPIO INFO [ver: %s] enable successfully!\n", IEI_GPIO_VERSION);
-	ret = misc_register(&iei_gpio_miscdev);
+	printk(KERN_INFO "GPIO INFO [ver: %s] enable successfully!\n", GPIO_VERSION);
+	ret = misc_register(&gpio_miscdev);
 	if (ret < 0) {
 		printk(KERN_ERR "GPIO: misc_register returns %d.\n", ret);
 		return;
