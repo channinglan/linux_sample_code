@@ -4,13 +4,45 @@
 #include <linux/kernel.h>
 #include <asm/gpio.h>
 #include <linux/interrupt.h>
+#include <linux/of.h>
+#include <linux/of_platform.h>
+#include <linux/of_gpio.h>
+#include <linux/of_irq.h>
 
 
+/*
+	//dts
+	power_fail {
+        	compatible = "power_fail";
+		label = "power_fail";
+		interrupt-parent = <&gpio2>;
+		interrupts = <23 IRQ_TYPE_EDGE_FALLING>;
+		gpios = <&gpio2 23 GPIO_ACTIVE_HIGH>;
+	};
+*/
+struct power_fail_s {
+        unsigned int code;
+        int active_low;
+        int gpio;
+        const char *desc;
+        int value;
+        unsigned int irq;
+};
 
+struct power_fail_platform_data {
+	struct power_fail_s *g_i;
+//	int nbuttons;
+	int (*enable)(struct device *dev);
+	void (*disable)(struct device *dev);
+	const char *name;
+};
+
+
+#define USE_DT		0
 #define MISC_DEV_EN	1
 	#define SIG_EN	1
 
-#define IEI_GPIO_VERSION		"0.0.3"
+#define IEI_GPIO_VERSION		"0.0.5"
 
 
 #define KEY_POWER_INT 253
@@ -246,30 +278,140 @@ static struct miscdevice iei_gpio_miscdev = {
 };
 
 #endif
-void pxm_io_int_release(void)
+	
+static int power_fail_remove(struct platform_device *pdev)
 {
 	printk("%s\n",__FUNCTION__);
 	free_irq(gpio_to_irq(number), NULL);
 	gpio_free(number);;
-	return;
+	pdev = pdev;
+	return 0;
+}	
+	
+	
+	
+#if (USE_DT==1)	
+
+const static struct of_device_id power_fail_of_match[] = {
+	{ .compatible = "power_fail" },
+	{ }
+};
+
+
+//#ifdef CONFIG_OF
+//static struct power_fail_platform_data *power_fail_parse_dt(struct device *dev)
+static struct power_fail_platform_data *power_fail_parse_dt(struct device *dev,const struct of_device_id *id)
+{
+	struct device_node *node, *pp;
+	struct power_fail_platform_data *pdata=NULL;
+	struct power_fail_s *button;
+	int error;	
+		enum of_gpio_flags flags;
+			
+	node = of_find_matching_node_and_match(NULL, power_fail_of_match,&id);
+	//node = dev->of_node;                        
+	if (!node) {	
+		printk("\n of_find_matching_node_and_match err");
+		return ERR_PTR(-ENODEV);
+	}
+	
+	//nbuttons = of_get_child_count(node);
+	//if (nbuttons == 0) {
+	//	printk("\n of_get_child_count err");
+	//	return ERR_PTR(-ENODEV);
+	//}
+	pdata = devm_kzalloc(dev,
+			     sizeof(*pdata) + sizeof(*button),
+			     GFP_KERNEL);
+	if (!pdata) {
+		printk("\n devm_kzalloc err");
+		return ERR_PTR(-ENOMEM);
+	}
+	pdata->g_i = (struct power_fail_s *)(pdata + 1);
+	
+		
+	//for_each_child_of_node(node, pp) 
+	{
+	pp = node;
+
+		
+		button = pdata->g_i;		
+			
+		button->gpio = of_get_gpio_flags(pp, 0, &flags);
+		if (button->gpio < 0) {
+			error = button->gpio;
+			if (error != -ENOENT) {
+				if (error != -EPROBE_DEFER)
+					dev_err(dev,
+						"Failed to get gpio flags, error: %d\n",
+						error);
+				return ERR_PTR(error);
+			}
+		} else {
+			button->active_low = flags & OF_GPIO_ACTIVE_LOW;
+		}
+        	
+		button->irq = irq_of_parse_and_map(pp, 0);
+        	
+		if (!gpio_is_valid(button->gpio) && !button->irq) {
+			dev_err(dev, "Found button without gpios or irqs\n");
+			return ERR_PTR(-EINVAL);
+		}
+		button->desc = of_get_property(pp, "label", NULL);
+
+	}
+	printk("\ndesc=%s",button->desc);
+	printk("\ngpio=%d",button->gpio);	
+	printk("\nirq=%d",button->irq);
+	printk("\nactive_low=%d",button->active_low);	
+	
+	return pdata;
 }
 
 
+MODULE_DEVICE_TABLE(of, power_fail_of_match);
+//#else
+//static int power_fail_parse_dt(struct device *dev)
+//{
+//	return -ENODEV;
+//}
+//#endif
+#endif	
 
-void pxm_io_int_config(void)
+static int power_fail_probe(struct platform_device *pdev)
 {
+#if (USE_DT==1)	
+        const struct of_device_id *id;
+	struct device *dev = &pdev->dev;
+	const struct power_fail_platform_data *pdata = dev_get_platdata(dev);
+#endif   
 #if (MISC_DEV_EN == 1)	
 	int ret=0;
 #endif	
 
 	printk("%s\n",__FUNCTION__);
+#if (USE_DT==1)	
+        id = of_match_node(power_fail_of_match, pdev->dev.of_node);	
+	
+	//if (!pdata) {
+	if (id) {		
+		pdata = power_fail_parse_dt(&pdev->dev,id);
+		if (IS_ERR(pdata))
+			return PTR_ERR(pdata);
+	} else {
+		printk("of_match_node err\n");
+	}
+#endif
+
+
+
 	if (gpio_is_valid(number) == 0) {	// return true if valid.
 		printk("GPIO %d not valid\n", number);
-		return;
+		return -1;
 	}
 	if (gpio_is_valid(main_number) == 0) {	// return true if valid.
 		printk("GPIO %d not valid\n", main_number);
-		return ;
+		return -1;
 	}
 	memset(&info, 0, sizeof(struct siginfo));
 
@@ -282,24 +424,24 @@ void pxm_io_int_config(void)
 	if (gpio_request(number, POWER_FAIL_NAME)) {
 		printk("GPIO %d request failure: %s\n", number,
 		       POWER_FAIL_NAME);
-		return;
+		return -1;
 	}
 	
 	if (gpio_request(main_number, POWER_FAIL_MAIN_NAME)) {
 		printk("GPIO %d request failure: %s\n", main_number,
 		       POWER_FAIL_MAIN_NAME);
-		return ;
+		return -1;
 	}	
 	
 	
 	if ((irq_sub_gpio = gpio_to_irq(number)) < 0) {
 		printk("GPIO to IRQ mapping failure %s\n", POWER_FAIL_NAME);
-		return;
+		return -1;
 	}
 
 	if ((irq_main_gpio = gpio_to_irq(main_number)) < 0) {
 		printk("GPIO to IRQ mapping failure %s\n", POWER_FAIL_MAIN_NAME);
-		return ;
+		return -1;
 	}
 
 
@@ -317,14 +459,14 @@ void pxm_io_int_config(void)
 	    (irq_sub_gpio, (irq_handler_t) r_irq_handler,
 	     IRQF_TRIGGER_FALLING, POWER_FAIL_NAME, NULL)) {
 		printk("%s Irq Request failure\n", POWER_FAIL_NAME);
-		return;
+		return -1;
 	}
 
 	if (request_irq
 	    (irq_main_gpio, (irq_handler_t) r_irq_handler_main,
 	     IRQF_TRIGGER_FALLING, POWER_FAIL_MAIN_NAME, NULL)) {
 		printk("%s Irq Request failure\n", POWER_FAIL_MAIN_NAME);
-		return ;
+		return -1;
 	}
 
 
@@ -334,28 +476,43 @@ void pxm_io_int_config(void)
 	ret = misc_register(&iei_gpio_miscdev);
 	if (ret < 0) {
 		printk(KERN_ERR "GPIO: misc_register returns %d.\n", ret);
-		return;
+		return -1;
 	}	
 	
 #endif	
 		
-	return;
+	return  0;
 
 	
 }
 
 
+static struct platform_driver power_fail_device_driver = {
+	//.probe		= power_fail_probe,
+	.remove		= power_fail_remove,
+	.driver		= {
+		.name	= "power_fail",
+	//	.pm	= &power_fail_pm_ops,
+	#if (USE_DT==1)	
+		.of_match_table = of_match_ptr(power_fail_of_match),
+	#endif
+	}
+};
+
+
 static int power_fail_init_module(void)
 {
 	printk("%s\n",__FUNCTION__);
-	pxm_io_int_config();
+	//return platform_driver_register(&power_fail_device_driver);
+        return platform_driver_probe(&power_fail_device_driver, power_fail_probe);
 	return 0;
 }
 
 static void power_fail_cleanup_module(void)
 {
 	printk("%s\n",__FUNCTION__);	
-	pxm_io_int_release();
+	platform_driver_unregister(&power_fail_device_driver);	
+
 }
 module_init(power_fail_init_module);
 module_exit(power_fail_cleanup_module);
@@ -375,3 +532,4 @@ MODULE_PARM_DESC(dbug, "debug");
 
 MODULE_DESCRIPTION("Power fail driver for GPIOs");
 MODULE_LICENSE("GPL");
+MODULE_ALIAS("platform:power_fail");
