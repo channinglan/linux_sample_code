@@ -32,22 +32,23 @@ void receiveData(int n, siginfo_t *info, void *unused)
 	int i=0;
 	//sprintf(str,"echo 1 > /sys/class/gpio/gpio%d/value",test_gpio_out);
 	//system(str);		
-
-	printf("get %i\n", info->si_int);
+	sprintf(str,"echo %d > /sys/class/leds/IndicatorLED:Green/brightness",1);	//for test,set high
+	system(str);
+		
+	printf("get 0x%x\n", info->si_int);
 	//sprintf(str,"echo 0 > /sys/class/gpio/gpio%d/value",test_gpio_out);
 	//system(str);	
-	printf("\n copy file test!");
+	//printf("\n copy file test!");
 	for(i=0;i<1000;) {
-		sprintf(str,"echo %d > /sys/class/leds/IndicatorLED:Green/brightness",i%2);	//for test
-		system(str);
-		//usleep(1000);
-		sprintf(str,"cp -rf /sbin/mke2fs /run/media/mmcblk0p1/mke2fs%d",i);	//for test
-		printf("\n%s",str);
-		system(str);			
-		system("sync");
-		sprintf(str,"ls -al /run/media/mmcblk0p1/mke2fs%d",i);	//for test
-		printf("\n%s",str);
+		usleep(1000);
+		//sprintf(str,"cp -rf /sbin/mke2fs /run/media/mmcblk0p1/mke2fs%d",i);	//for test
+		//printf("\n%s",str);
+		//system(str);			
+		//system("sync");
+		//sprintf(str,"ls -al /run/media/mmcblk0p1/mke2fs%d",i);	//for test
+		//printf("\n%s",str);
 		i++;	
+		printf(">%d",i);
 	}	
 }
 
@@ -100,6 +101,9 @@ int main(int argc, char *argv[])
 	//system(str);
 	//sprintf(str,"echo 0 > /sys/class/gpio/gpio%d/value",test_gpio_out);
 	//system(str);	
+	
+	sprintf(str,"echo %d > /sys/class/leds/IndicatorLED:Green/brightness",0);	//for test,set low
+	system(str);	
 	
 	while(1) {
 		listitem();

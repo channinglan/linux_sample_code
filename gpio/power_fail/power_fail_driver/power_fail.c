@@ -21,27 +21,22 @@
 
 
 
-#define POWER_INT GPIO_TO_PIN(2,23)//GPIO_TO_PIN(1, 3) //default pin
-#define POWER_INT2 GPIO_TO_PIN(3,21)//GPIO_TO_PIN(1, 3) //default pin
-#define POWER_FAIL_NAME  "power_fail"
-#define POWER_FAIL_MAIN_NAME  "power fail main int"
+#define POWER_SUB_INT		GPIO_TO_PIN(2,23)
+#define POWER_MAIN_INT		GPIO_TO_PIN(3,21)
+#define POWER_FAIL_NAME		"power_fail"
+#define POWER_FAIL_MAIN_NAME	"power fail main int"
 
-short int irq_any_gpio = 0;
+short int irq_sub_gpio = 0;
 short int irq_main_gpio = 0;
 int count = 0;
 int main_count = 0;
-static int	number	 = POWER_INT;
-static int	main_number = POWER_INT2;
+static int	number		= POWER_SUB_INT;
+static int	main_number	= POWER_MAIN_INT;
 static int	dbug	= 0;
 
 
 #define IODEB(fmt, arg...)	if(dbug) {printk("\n[IOINT]" ""fmt,##arg);}
 
-
-
-
-#define GPIO_HIGH gpio_get_value(number)
-#define GPIO_LOW (gpio_get_value(number) == 0)
 
 enum { falling, rising } type;
 
@@ -297,8 +292,7 @@ void pxm_io_int_config(void)
 	}	
 	
 	
-	printk(KERN_NOTICE "gpio_to_irq(%d)\n", number);
-	if ((irq_any_gpio = gpio_to_irq(number)) < 0) {
+	if ((irq_sub_gpio = gpio_to_irq(number)) < 0) {
 		printk("GPIO to IRQ mapping failure %s\n", POWER_FAIL_NAME);
 		return;
 	}
@@ -309,7 +303,8 @@ void pxm_io_int_config(void)
 	}
 
 
-	printk(KERN_NOTICE "Mapped int %d and %d\n", irq_main_gpio,irq_any_gpio,);
+	printk(KERN_NOTICE "gpio_to_irq %d Mapped int %d \n",main_number,irq_main_gpio);
+	printk(KERN_NOTICE "gpio_to_irq %d Mapped int %d \n",number,irq_sub_gpio);	
 
 /*
  IRQF_TRIGGER_NONE       
@@ -319,7 +314,7 @@ void pxm_io_int_config(void)
  IRQF_TRIGGER_LOW        
 */
 	if (request_irq
-	    (irq_any_gpio, (irq_handler_t) r_irq_handler,
+	    (irq_sub_gpio, (irq_handler_t) r_irq_handler,
 	     IRQF_TRIGGER_FALLING, POWER_FAIL_NAME, NULL)) {
 		printk("%s Irq Request failure\n", POWER_FAIL_NAME);
 		return;
@@ -333,22 +328,9 @@ void pxm_io_int_config(void)
 	}
 
 
-
-	//gpio_export(number, true);	
-
-	//printk("GPIO %d = %d\n", number,gpio_direction_input(number));
-		type = GPIO_LOW ? falling : rising;  
-                                                     
-		if (type == falling) {               
-			printk("gpio pin is low\n"); 
-		} else                               
-			printk("gpio pin is high\n");
-
-	
-	
 	
 #if (MISC_DEV_EN == 1)	
-	printk(KERN_INFO "IEI GPIO INFO [ver: %s] enable successfully!\n", IEI_GPIO_VERSION);
+	printk(KERN_INFO "power fail check [ver: %s] enable successfully!\n", IEI_GPIO_VERSION);
 	ret = misc_register(&iei_gpio_miscdev);
 	if (ret < 0) {
 		printk(KERN_ERR "GPIO: misc_register returns %d.\n", ret);
