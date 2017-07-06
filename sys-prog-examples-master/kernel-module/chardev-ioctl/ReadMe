@@ -1,0 +1,22 @@
+
+#cat /proc/devices | grep char_dev
+100 char_dev
+
+
+#mknod /dev/chardev c 100 0
+
+# ./ioctl 
+get_nth_byte message:
+get_msg message:
+
+
+
+
+# echo 1111 > /dev/char_dev 
+# ./ioctl 
+get_nth_byte message:1111
+ge passed by ioctl
+
+get_msg message:1111
+ge passed by ioctl
+
