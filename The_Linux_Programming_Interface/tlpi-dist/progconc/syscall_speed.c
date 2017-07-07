@@ -23,6 +23,9 @@
    of a simple function call against that of a system call.
 */
 #include "tlpi_hdr.h"
+#include <sys/types.h>
+#include <unistd.h>
+
 
 #ifdef NOSYSCALL
 static int myfunc() { return 1; }
@@ -31,22 +34,29 @@ static int myfunc() { return 1; }
 int
 main(int argc, char *argv[])
 {
-    int numCalls, j;
-
-    numCalls = (argc > 1) ? getInt(argv[1], GN_GT_0, "num-calls") : 10000000;
-
+	int numCalls=2, j;
+	pid_t  pid;
+	pid_t  ppid;
+	numCalls = (argc > 1) ? getInt(argv[1], GN_GT_0, "num-calls") : 10;
+        printf("numCalls %d\n",numCalls); 
 #ifdef NOSYSCALL
         printf("Calling normal function\n");
 #else
         printf("Calling getppid()\n");
 #endif
-
-    for (j = 0; j < numCalls; j++)
+	system("ps -aux ");
+	for (j = 0; j < numCalls; j++) {
 #ifdef NOSYSCALL
-        myfunc();
+        	myfunc();
 #else
-        getppid();
+		//pid_t getpid(void);
+		//getpid() returns the process ID of the calling process. (This is often used by routines that generate unique temporary filenames.) 
+        	pid = getppid();
+        	//pid_t getppid(void);
+        	//getppid() returns the process ID of the parent of the calling process. 
+        	ppid = getppid();
+        	printf("[%d]Calling getppid() parent %d pid %d\n",j,ppid,pid);       
 #endif
-
-    exit(EXIT_SUCCESS);
+	}
+	exit(EXIT_SUCCESS);
 }

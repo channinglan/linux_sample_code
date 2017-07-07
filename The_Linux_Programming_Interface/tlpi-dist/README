@@ -170,3 +170,16 @@ to topics NOT covered in TLPI):
 
 namespaces      Code examples for namespaces, mainly related to my LWN.net
                 article series starting at https://lwn.net/Articles/531114/
+                
+                
+                
+                
+fix error
+ubutun 16.04
+acl_update.c:23:21: fatal error: sys/acl.h: No such file or directory
+	#apt-get install libacl1-dev
+	
+	
+check_password_caps.c:34:28: fatal error: sys/capability.h: No such file or directory
+	#apt-get install libcap-dev
+
