@@ -22,13 +22,15 @@
 #include <errno.h>
 #include <alsa/asoundlib.h>
 
-#define BUFSIZE (1024 * 4)
+#define BUFSIZE 32768//(1024 * 4)
 
 snd_pcm_t *playback_handle, *capture_handle;
-int buf[BUFSIZE * 2];
-
-static unsigned int rate = 192000;
-static unsigned int format = SND_PCM_FORMAT_S32_LE;
+int buf[BUFSIZE * 10];
+int rbuf[BUFSIZE * 10];
+int r_pos;
+int r_count;
+static unsigned int rate = 48000;
+static unsigned int format = SND_PCM_FORMAT_S16_LE;
 
 static int open_stream(snd_pcm_t **handle, const char *name, int dir)
 {
@@ -115,15 +117,23 @@ static int open_stream(snd_pcm_t **handle, const char *name, int dir)
 
 	return 0;
 }
-  
+#define READ_END 0 
+#define WRITE_END 1
+#define PIPE_EN 0
 int main(int argc, char *argv[])
 {
 	int err;
-
-	if ((err = open_stream(&playback_handle, "default", SND_PCM_STREAM_PLAYBACK)) < 0)
+	int pfd[2];       
+     
+                           /* Pipe file descriptors */
+	if ((err = open_stream(&playback_handle, "hw:1,0", SND_PCM_STREAM_PLAYBACK)) < 0)
+//	if ((err = open_stream(&playback_handle, "default", SND_PCM_STREAM_PLAYBACK)) < 0)	
 		return err;
 
-	if ((err = open_stream(&capture_handle, "hw:0,1", SND_PCM_STREAM_CAPTURE)) < 0)
+
+
+//	if ((err = open_stream(&capture_handle, argv[1], SND_PCM_STREAM_CAPTURE)) < 0)
+	if ((err = open_stream(&capture_handle, "hw:2,0", SND_PCM_STREAM_CAPTURE)) < 0)	
 		return err;
 
 	if ((err = snd_pcm_prepare(playback_handle)) < 0) {
@@ -140,29 +150,67 @@ int main(int argc, char *argv[])
 
 	memset(buf, 0, sizeof(buf));
 
+#if PIPE_EN
+	if (err = pipe(pfd) == -1) {
+		fprintf(stderr, "cannot create pipe(%s)\n",
+			 snd_strerror(err));
+		return err;
+	}
+#endif
+
 	while (1) {
-		int avail;
-
-		if ((err = snd_pcm_wait(playback_handle, 1000)) < 0) {
-			fprintf(stderr, "poll failed(%s)\n", strerror(errno));
+		int r_avail=0;
+		int avail=0;
+		//int 	snd_pcm_wait (snd_pcm_t *pcm, int timeout)
+ 		//Wait for a PCM to become ready. 
+		//if ((err = snd_pcm_wait(playback_handle, 100)) < 0) {
+		//	fprintf(stderr, "poll failed(%s)\n", strerror(errno));
+		//	break;
+		//}	           
+		if ((err = snd_pcm_wait(capture_handle, 50)) < 0) {
+			fprintf(stderr, "capture poll failed(%s)\n", strerror(errno));
 			break;
-		}	           
+		}	
 
-		avail = snd_pcm_avail_update(capture_handle);
-		if (avail > 0) {
-			if (avail > BUFSIZE)
-				avail = BUFSIZE;
 
-			snd_pcm_readi(capture_handle, buf, avail);
+		r_avail = snd_pcm_avail_update(capture_handle);
+		if (r_avail > 0) {
+			if (r_avail > BUFSIZE)
+				r_avail = BUFSIZE;
+			printf("\n capture %d",r_avail);
+			snd_pcm_readi(capture_handle, buf, r_avail);
+			
+			#if PIPE_EN
+			if(write(pfd[WRITE_END], buf, r_avail) == -1)
+			{
+				perror("write");
+				//exit(EXIT_FAILURE);
+			}			
+			#endif
 		}
 
 		avail = snd_pcm_avail_update(playback_handle);
-		if (avail > 0) {
+		if (avail > 0 && r_avail > 0) {
+			//if (avail > r_avail)
+			//	avail = r_avail;			
+			
+			
 			if (avail > BUFSIZE)
 				avail = BUFSIZE;
-
-			snd_pcm_writei(playback_handle, buf, avail);
+				
+			#if PIPE_EN	
+			avail = read(pfd[READ_END], &rbuf, BUFSIZE);
+			#endif		
+			printf("\n playback %d",avail);
+			
+			#if PIPE_EN
+			snd_pcm_writei(playback_handle, rbuf, avail);
+			#else
+			snd_pcm_writei(playback_handle, buf, avail);			
+			#endif
 		}
+		
+		
 	}
 
 	snd_pcm_close(playback_handle);
