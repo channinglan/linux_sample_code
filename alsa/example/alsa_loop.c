@@ -26,22 +26,33 @@
 #define BUFSIZE (1024 * 32)
 #define BUF_COUNT 10
 snd_pcm_t *playback_handle, *capture_handle;
-char buf[BUFSIZE * BUF_COUNT];
-char rbuf[BUFSIZE * BUF_COUNT];
-int debug=0;
+snd_pcm_info_t *playback_info, *capture_info;
+
+
+static int debug=0;
 #define	deb(level,fmt,	arg...)			\
 	if(debug > level) {			\
 		printf("" fmt, ##arg);		\
 	}
 
 
-static unsigned int rate = 48000;
 static unsigned int format = SND_PCM_FORMAT_S16_LE;
+static int audio_sample_rate=48000;
+static char capture_device_str[32]="default";
+static char play_device_str[32]="default";
+#define VERSION_STR "1.0"
 
-static int open_stream(snd_pcm_t **handle, const char *name, int dir)
+static void version(void)
+{
+	printf("\nversion " VERSION_STR "\n");
+}
+
+
+static int open_stream(snd_pcm_t **handle,snd_pcm_info_t *info, const char *name, int dir,int format)
 {
 	snd_pcm_hw_params_t *hw_params;
 	snd_pcm_sw_params_t *sw_params;
+
 	const char *dirname = (dir == SND_PCM_STREAM_PLAYBACK) ? "PLAYBACK" : "CAPTURE";
 	int err;
 
@@ -50,6 +61,13 @@ static int open_stream(snd_pcm_t **handle, const char *name, int dir)
 			name, dirname, snd_strerror(err));
 		return err;
 	}
+#if 1
+	snd_pcm_info_alloca(&info);
+	if ((err = snd_pcm_info(*handle, info)) < 0) {
+		fprintf(stderr, ("info error: %s"), snd_strerror(err));
+		return err;
+	}
+#endif
 
 	if ((err = snd_pcm_hw_params_malloc(&hw_params)) < 0) {
 		fprintf(stderr, "%s (%s): cannot allocate hardware parameter structure(%s)\n",
@@ -75,7 +93,7 @@ static int open_stream(snd_pcm_t **handle, const char *name, int dir)
 		return err;
 	}
 
-	if ((err = snd_pcm_hw_params_set_rate_near(*handle, hw_params, &rate, NULL)) < 0) {
+	if ((err = snd_pcm_hw_params_set_rate_near(*handle, hw_params, &audio_sample_rate, NULL)) < 0) {
 		fprintf(stderr, "%s (%s): cannot set sample rate(%s)\n",
 			name, dirname, snd_strerror(err));
 		return err;
@@ -121,18 +139,21 @@ static int open_stream(snd_pcm_t **handle, const char *name, int dir)
 		return err;
 	}
 
+
+	printf("\n snd_pcm_name=%s",snd_pcm_name(*handle));
+
 	return 0;
 }
 
 
-#define FIFO_MAX_SIZE 32768 * BUF_COUNT
+#define FIFO_MAX_SIZE (BUFSIZE * BUF_COUNT)
 char *fifo_buf;
-#define PCM_SIZE	4	//2ch 2byte
+#define PCM_SIZE	4	//2ch 16bit
 int w_ptr=0,r_ptr=0,fifo_size=0;
 int buf_fifo(int mode,char *buf,unsigned int len)
 {
 	unsigned int tmp_len;
-	
+
 	if(mode == 0) { //w
 		if(w_ptr+len > FIFO_MAX_SIZE) {
 			deb(1,"\n over max szie");
@@ -146,16 +167,16 @@ int buf_fifo(int mode,char *buf,unsigned int len)
 		}
 		fifo_size+=len;
 		deb(1,"\n w %d  len %d fifo %d",w_ptr,len,fifo_size);
-		
+
 		return len;
 	} else {	//r
 		if(fifo_size < len) {
-			len = fifo_size;	
-		}		
-		
+			len = fifo_size;
+		}
+
 		deb(1,"\n r %d  len %d fif0 %d",r_ptr,len,fifo_size);
 		if(r_ptr+len > FIFO_MAX_SIZE) {
-			deb(1,"\n over max szie");			
+			deb(1,"\n over max szie");
 			tmp_len=FIFO_MAX_SIZE-r_ptr;
 			memcpy((void *)buf,(void *)&fifo_buf[r_ptr],tmp_len);
 			memcpy((void *)&buf[tmp_len],(void *)&fifo_buf[0],(len-tmp_len));
@@ -164,14 +185,15 @@ int buf_fifo(int mode,char *buf,unsigned int len)
 			memcpy((void *)buf,(void *)&fifo_buf[r_ptr],len);
 			r_ptr+=len;
 		}
-		
+
 		fifo_size-=len;
 
-		
+
 		return len;
 	}
-	
+
 }
+
 
 
 
@@ -179,17 +201,60 @@ int main(int argc, char *argv[])
 {
 	unsigned long play_byte=0,capture_byte=0;
 	int err,play_prepare_flag=0;
+	int c;
+
+	while((c=getopt(argc, argv, "vhr:c:p:d:")) != -1)
+	{
+	    switch(c)
+	    {
+	    case 'h':
+		printf("\n -r 48000	  :sample rate");
+		printf("\n -c hw:x,x	  :audio CAPTURE device");
+		printf("\n -p hw:x,x	  :audio PLAY device");
+		printf("\n");
+		return 0;
+		
+	    case 'v':		
+		version();
+		return 0;		
+		
+	    case 'r':
+		audio_sample_rate = atoi(optarg);
+		printf("\n audio_sample_rate=%d",audio_sample_rate);
+		break;
+
+	    case 'c':
+		sscanf(optarg, "%s", capture_device_str);
+		printf("\n capture_device_str=%s",capture_device_str);
+		break;
+
+	    case 'p':
+		sscanf(optarg, "%s", play_device_str);
+		printf("\n play_device_str=%s",play_device_str);
+		break;
+		
+	    case 'd':
+		debug = atoi(optarg);
+		printf("\n debug=%d",debug);
+		break;		
+		
+	    default:
+		puts("wrong command");
+		break;
+	    }
+	}
+
 
 	fifo_buf = (char*) malloc(sizeof(char)*FIFO_MAX_SIZE);
 
-	if ((err = open_stream(&playback_handle, "hw:1,0", SND_PCM_STREAM_PLAYBACK)) < 0)
-//	if ((err = open_stream(&playback_handle, "default", SND_PCM_STREAM_PLAYBACK)) < 0)
+//	if ((err = open_stream(&playback_handle, "hw:1,0", 		SND_PCM_STREAM_PLAYBACK,format)) < 0)
+	if ((err = open_stream(&playback_handle,playback_info, play_device_str, 	SND_PCM_STREAM_PLAYBACK,format)) < 0)
 		return err;
 
 
 
-//	if ((err = open_stream(&capture_handle, argv[1], SND_PCM_STREAM_CAPTURE)) < 0)
-	if ((err = open_stream(&capture_handle, "hw:2,0", SND_PCM_STREAM_CAPTURE)) < 0)
+	if ((err = open_stream(&capture_handle,capture_info, capture_device_str, 	SND_PCM_STREAM_CAPTURE,format)) < 0)
+//	if ((err = open_stream(&capture_handle, "hw:2,0", 		SND_PCM_STREAM_CAPTURE,format)) < 0)
 		return err;
 
 	if ((err = snd_pcm_start(capture_handle)) < 0) {
@@ -197,17 +262,19 @@ int main(int argc, char *argv[])
 			 snd_strerror(err));
 		return err;
 	}
-		
-	
-	
+
+
+
 	deb(0,"\n init pcm");
-	memset(buf, 0, sizeof(buf));
+	//memset(buf, 0, sizeof(buf));
 
 
 	deb(0,"\n start loop play");
 	while (1) {
-		int capture_avail=0,play_len=0,capture_len=0;
-		int play_avail=0;
+		char capture_buf[BUFSIZE*PCM_SIZE];
+		char play_buf[BUFSIZE*PCM_SIZE];
+		int capture_avail=0,capture_len=0;
+		int play_avail=0,play_len=0;
 		//int 	snd_pcm_wait (snd_pcm_t *pcm, int timeout)
  		//Wait for a PCM to become ready.
 		//if ((err = snd_pcm_wait(playback_handle, 100)) < 0) {
@@ -221,21 +288,21 @@ int main(int argc, char *argv[])
 
 
 		capture_avail = snd_pcm_avail_update(capture_handle);
-		if (capture_avail > 0) {	
-			deb(1,"\n capture_avail %d",capture_avail);			
+		if (capture_avail > 0) {
+			deb(1,"\n capture_avail %d",capture_avail);
 			if (capture_avail > BUFSIZE)
 				capture_avail = BUFSIZE;
-					
-				
-			snd_pcm_readi(capture_handle, rbuf, capture_avail);
 
-			capture_len = buf_fifo(0,rbuf,capture_avail*PCM_SIZE)/PCM_SIZE;
+
+			snd_pcm_readi(capture_handle, capture_buf, capture_avail);
+
+			capture_len = buf_fifo(0,capture_buf,capture_avail*PCM_SIZE)/PCM_SIZE;
 			capture_byte+=capture_len;
 
-			deb(1,"\n capture 0x%x %d/%d(%ld)",rbuf[0],capture_len,capture_avail,capture_byte);
+			deb(1,"\n capture 0x%x %d/%d(%ld)",capture_buf[0],capture_len,capture_avail,capture_byte);
 		} else if (capture_avail < 0) {
 			deb(1,"capture cannot update audio avail for use(%s)\n",
-			 snd_strerror(capture_avail));			
+			 snd_strerror(capture_avail));
 		}
 
 
@@ -252,21 +319,28 @@ int main(int argc, char *argv[])
 		} else {
 			play_avail = snd_pcm_avail_update(playback_handle);
 			if (play_avail > 0) {
-				deb(1,"\n playback avail %d",play_avail);					
+				deb(1,"\n playback avail %d",play_avail);
 
 				if (play_avail > BUFSIZE)
 					play_avail = BUFSIZE;
-                	             	       
-				 play_len = buf_fifo(1,buf,play_avail*PCM_SIZE)/PCM_SIZE;			 
+
+				if (play_avail > 3840)
+					play_avail = 3840;
+					
+				if (play_avail > fifo_size)
+					play_avail = fifo_size;					
+					
+
+				 play_len = buf_fifo(1,play_buf,play_avail*PCM_SIZE)/PCM_SIZE;
 			 	capture_len=0;
-				 
-				snd_pcm_writei(playback_handle, buf, play_avail);
-                	
+
+				snd_pcm_writei(playback_handle, play_buf, play_avail);
+
 				play_byte+=play_avail;
-				deb(1,"\n playback 0x%x %d/%d(%ld)",buf[0],play_len,play_avail,play_byte);
+				deb(1,"\n playback 0x%x %d/%d(%ld)",play_buf[0],play_len,play_avail,play_byte);
 			} else if (play_avail < 0){
 				fprintf(stderr,"play cannot update audio avail for use(%s)\n",
-				 snd_strerror(play_avail));			
+				 snd_strerror(play_avail));
 			}
 		}
 	}
