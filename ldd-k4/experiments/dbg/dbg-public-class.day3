@@ -1,0 +1,58 @@
+1. oom 
+$ sudo swapoff -a
+$ sudo sh -c 'echo 1 > /proc/sys/vm/overcommit_memory'
+
+run: training/debug/mm/munch.c
+#dmesg
+
+---------------
+run: training/debug/mm/mmap.c with/without marco mlockall
+
+create a memory group xxx and put munch.c to the group:
+	(1). sudo mkdir /sys/fs/cgroup/memory/xxx
+	(2). limit the memory bytes in the group
+e.g.
+/sys/fs/cgroup/memory/xxx$ sudo sh -c 'echo $((100*1024*1024)) > memory.limit_in_bytes'
+	(3). sudo cgexec -g memory:xxx ./a.out
+----------------
+
+
+2. page reclaim
+launch firefox
+cat /proc/firefox-pid/smaps > 1
+run: training/debug/mm/munch.c
+cat /proc/firefox-pid/smaps > 2
+compare 1 and 2 by meld
+
+3. page cache
+drop cache at first:
+root@baohua-VirtualBox:/proc/sys/vm# echo 3 > drop_caches
+
+#free
+#cat /dev/sda1 > /dev/null
+#free
+
+compare the output of the two free
+
+4. smem
+	$ smem
+	$ smem --pie=comand
+	$ smem --bar=command
+
+-------------
+5. valgrind
+run: training/memory_check/valgrind
+------------
+
+6.  build a a.out with while(1)
+(1) run one ./a.out
+	cat /proc/a.out-pid/smaps | more
+(2) run two ./a.out
+	cat /proc/a.out-pid/smaps | more
+
+
+7. use "pmap" command to show the memory map of a process
+
+----------
+8. splint: training/program-c/lint
+----------

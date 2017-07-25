@@ -1,0 +1,17 @@
+TN:test
+SF:/home/baohua/develop/training/gcov/test.c
+FN:3,main
+FNDA:1,main
+FNF:1
+FNH:1
+DA:3,1
+DA:7,1
+DA:9,11
+DA:10,10
+DA:12,1
+DA:13,0
+DA:15,1
+DA:16,1
+LF:8
+LH:7
+end_of_record

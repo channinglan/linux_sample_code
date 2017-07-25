@@ -1,0 +1,2 @@
+gcc -shared -fPIC pthread-helper.c -o pthread-helper.so -lpthread -ldl
+LD_PRELOAD=./pthread-helper.so ./a.out

@@ -1,0 +1,329 @@
+Dash与Bash的语法区别
+    
+    如今Debian和Ubuntu中，/bin/sh默认已经指向dash，这是一个不同于bash的shell，它主要是为了执行脚本而出现，而不是交互，它速度更快，但功能相比bash要少很多，语法严格遵守POSIX标准，下面简要列举下从bash迁移到dash一般需要注意的问题
+    
+    1.定义函数
+    
+    bash: function在bash中为关键字
+    
+    igi@gentoo ~ $ foo(){ echo $0;}
+    igi@gentoo ~ $ foo
+    /bin/bash
+    igi@gentoo ~ $ function foo2(){ echo $0;}
+    igi@gentoo ~ $ foo2
+    /bin/bash
+    dash: dash中没有function这个关键字
+    
+    $ foo(){ echo $0;}
+    $ foo
+    dash
+    $ function foo2(){ echo $0;}
+    dash: Syntax error: "(" unexpected
+    2.select var in list; do command; done
+    
+    bash:支持
+    
+    igi@gentoo ~ $ select input in A B
+    > do
+    >   case $input in
+    >     A)
+    >        echo 'Input:A'
+    >        break
+    >        ;;
+    >     B)
+    >        echo 'Input:B'
+    >        break
+    >        ;;
+    >   esac
+    > done
+    1) A
+    2) B
+    #? 1
+    Input:A
+    igi@gentoo ~ $ echo $0
+    /bin/bash
+    dash:不支持, 替代方法:采用while+read+case来实现
+    
+    menu(){ echo -n "1)A;\n2)B\n>";}
+    menu
+    while read input
+    do
+        case $input in
+          1)
+             echo 'A'
+             break
+             ;;
+          2)
+             echo 'B'
+             break
+             ;;
+          *)
+             menu
+             continue
+             ;;
+        esac
+    done
+    3. echo {0..10}
+    
+    bash:支持{n..m}展开
+    
+    igi@gentoo ~ $ echo $0
+    /bin/bash
+    igi@gentoo ~ $ echo {0..10}
+    0 1 2 3 4 5 6 7 8 9 10
+    dash:不支持，替代方法, 采用seq外部命令
+    
+    $ echo $0
+    dash
+    $ echo {0..10}
+    {0..10}
+    $ echo `seq 0 10`
+    0 1 2 3 4 5 6 7 8 9 10
+    4. here string
+    
+    bash:支持here string
+    
+    igi@gentoo ~ $ cat <<<"string"
+    string
+    igi@gentoo ~ $ echo $0
+    /bin/bash
+    dash:不支持, 替代方法:可采用here documents
+    
+    $ echo $0
+    dash
+    $ cat <<<"string"
+    dash: Syntax error: redirection unexpected
+    $ cat <<EOF
+    > string
+    > EOF
+    string
+    5. >&word重定向标准输出和标准错误
+    
+    bash: 当word为非数字时，>&word变成重定向标准错误和标准输出到文件word, 常见用法>&/dev/null
+    
+    igi@gentoo ~/test $ ls
+    a
+    igi@gentoo ~/test $ ls a b
+    ls: cannot access b: No such file or directory
+    a
+    igi@gentoo ~/test $ ls a b >&/dev/null
+    igi@gentoo ~/test $ ls a b >/dev/null 2>&1
+    igi@gentoo ~/test $ echo $0
+    /bin/bash
+    dash: >&word, word不支持非数字, 替代方法: >word 2>&1; 常见用法 >/dev/null 2>&1
+    
+    $ echo $0
+    dash
+    $ ls a
+    a
+    $ ls a b
+    ls: cannot access b: No such file or directory
+    a
+    $ ls a b >&/dev/null
+    dash: Syntax error: Bad fd number
+    $ ls a b >/dev/null 2>&1
+    $
+    6. 数组
+    
+    bash: 支持数组, bash4支持关联数组
+    
+    igi@gentoo ~/test $ echo $0
+    /bin/bash
+    igi@gentoo ~/test $ array=( a b c )
+    igi@gentoo ~/test $ echo ${array[2]}
+    c
+    dash: 不支持数组，替代方法, 采用变量名+序号来实现类似的效果
+    
+    $ for i in a b c
+    > do
+    > id=$((${id:=-1}+1))
+    > eval array_$id=$i
+    > done
+    $ echo ${array_1}
+    b
+    $ echo $0
+    dash
+    很蛋疼的方法，非不得以不建议这么用
+    
+    7. 子字符串扩展
+    
+    bash: 支持${parameter:offset:length},${parameter:offset}
+    
+    igi@gentoo ~/test $ string='hello'
+    igi@gentoo ~/test $ echo ${string:1:3}
+    ell
+    igi@gentoo ~/test $ echo ${string:1}
+    ello
+    igi@gentoo ~/test $ echo $0
+    /bin/bash
+    dash: 不支持， 替代方法:采用expr或cut外部命令代替
+    
+    $ string='hello'
+    $ expr substr "$string" 2 3
+    ell
+    $ echo "$string" | cut -c2-4
+    ell
+    $ expr substr "$string" 2 "${#string}"
+    ello
+    $ echo "$string" | cut -c2-
+    ello
+    $ echo $0
+    dash
+    $
+    8. 大小写转换
+    
+    bash: 支持${parameter^pattern},${parameter^^pattern},${parameter,pattern},${parameter,,pattern}
+    
+    igi@gentoo ~/test $ string="abcABC"
+    igi@gentoo ~/test $ echo ${string^^}
+    ABCABC
+    igi@gentoo ~/test $ echo ${string,,}
+    abcabc
+    igi@gentoo ~/test $ echo ${string^^b}
+    aBcABC
+    igi@gentoo ~/test $ echo $0
+    /bin/bash
+    dash: 不支持，替代方法:采用tr/sed/awk等外部命令转换
+    
+    $ string='abcABC'
+    $ echo "$string" | tr '[a-z]' '[A-Z]'
+    ABCABC
+    $ echo "$string" | tr '[A-Z]' '[a-z]'
+    abcabc
+    $ echo "$string" | sed 's/b/\U&/g'
+    aBcABC
+    $
+    9. 进程替换<(command), >(command)
+    
+    bash: 支持进程替换
+    
+    igi@gentoo ~ $ diff <(seq 3) <(seq 4)
+    3a4
+    > 4
+    igi@gentoo ~ $ echo $0
+    /bin/bash
+    dash: 不支持, 替代方法, 通过临时文件中转
+    
+    $ diff <(seq 3) <(seq 4)
+    dash: Syntax error: "(" unexpected
+    $ seq 3 >tmp1
+    $ seq 4 >tmp2
+    $ diff tmp1 tmp2
+    3a4
+    > 4
+    $ echo $0
+    dash
+    $
+    10. [ string1 = string2 ] 和 [ string1 == string2 ]
+    
+    bash: 支持两者
+    
+    igi@gentoo ~ $ [ 'a' = 'a' ] && echo 'equal'
+    equal
+    igi@gentoo ~ $ [ 'a' == 'a' ] && echo 'equal'
+    equal
+    igi@gentoo ~ $ echo $0
+    /bin/bash
+    dash: 只支持=
+    
+    $ [ 'a' = 'a' ] && echo 'equal'
+    equal
+    $ [ 'a' == 'a' ] && echo 'equal'
+    [: 2: a: unexpected operator
+    $ echo $0
+    dash
+    $
+    11. [[ 加强版test
+    
+    bash: 支持[[ ]], 可实现正则匹配等强大功能
+    
+    igi@gentoo ~ $ [[ 'xyz123' =~ xyz[0-9]+ ]] && echo 'equal'
+    equal
+    igi@gentoo ~ $ echo $0
+    /bin/bash
+    dash: 不支持[[ ]], 替代方法，采用外部命令
+    
+    $ [[ 'xyz123' =~ xyz[0-9]+ ]] && echo 'equal'
+    dash: [[: not found
+    $ echo 'xyz123' | grep -q 'xyz[0-9]\+' && echo 'equal'
+    equal
+    $ echo $0
+    dash
+    $
+    12. for (( expr1 ; expr2 ; expr3 )) ; do list ; done
+    
+    bash: 支持C语言格式的for循环
+    
+    igi@gentoo ~ $ for((i=0;i<=3;i++));do echo "$i";done
+    
+    igi@gentoo ~ $ echo $0
+    /bin/bash
+    dash: 不支持该格式的for, 替代方法，用while+$((expression))实现
+    
+    $ i=0
+    $ while [ "$i" -le 3 ]
+    > do
+    > echo "$i"
+    > i=$((i+1))
+    > done
+    0
+    1
+    2
+    3
+    $ echo $0
+    dash
+    $
+    13. let命令和((expression))
+    
+    bash: 有内置命令let, 也支持((expression))方式
+    
+    igi@gentoo ~ $ i=0
+    igi@gentoo ~ $ let i++
+    igi@gentoo ~ $ echo $i
+    1
+    igi@gentoo ~ $ ((i++))
+    igi@gentoo ~ $ echo $i
+    2
+    igi@gentoo ~ $ echo $0
+    /bin/bash
+    dash: 不支持，替代方法，采用$((expression))或者外部命令做计算
+    
+    $ i=0
+    $ i=$((i+1))
+    $ echo $i
+    1
+    $ echo $0
+    dash
+    $
+    14. $((expression))
+    
+    bash: 支持id++,id--,++id,--id这样到表达式
+    
+    igi@gentoo ~ $ i=0
+    igi@gentoo ~ $ echo $((i++))
+    0
+    igi@gentoo ~ $ echo $i
+    1
+    igi@gentoo ~ $ echo $((++i))
+    2
+    igi@gentoo ~ $ echo $i
+    2
+    igi@gentoo ~ $ echo $0
+    /bin/bash
+    dash: 不支持++,--, 替代方法:id+=1,id-=1, id=id+1,id=id-1
+    
+    $ i=0
+    $ echo $((i++))
+    dash: arithmetic expression: expecting primary: "i++"
+    $ echo $i;i=$((i+1))
+    0
+    $ echo $i
+    1
+    $ echo $((i+=1))
+    2
+    $ echo $i
+    2
+    $ echo $0
+    dash
+    $
+

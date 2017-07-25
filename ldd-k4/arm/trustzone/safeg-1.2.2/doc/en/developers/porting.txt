@@ -1,0 +1,394 @@
+
+                       TOPPERS/SafeG porting
+                       ---------------------
+
+                         Daniel Sangorrin
+                    (daniel.sangorrin@gmail.com)
+                           21-dec-2012
+
+This documents provides a few hints for developers trying to port
+TOPPERS/SafeG to a new target board.
+
+A porting of TOPPERS/SafeG to a new board typically involves the following
+steps:
+
+    1) Prepare a simple baremetal test to check if the board runs in
+       Non-Secure mode at initialization, and we can use the TrustZone
+       monitor (e.g., check baremetal tests in the 'tests/' folder).
+
+    2) Port the TOPPERS/FMP (or other real-time OS) to the board. This
+       typically involves adjusting the load address (use a 32-bit aligned
+       load address, that is bits 0..4 are set to zero), creating drivers for
+       the system timer and serial ports, etc. Make sure you don't use the
+       same peripherals as Linux kernel (or other general-purpose OS).
+
+    3) As a first test, it is useful to create a version of the
+       TOPPERS/FMP for running in Non-Secure mode (not essencial).
+
+    4) Patch the Linux kernel to remove the usage of peripherals or
+       ARM instructions that are reserved to the Secure mode. This
+       involves all operations that would be able to affect the
+       execution of the real-time OS (e.g., accesses to Secure peripherals
+       or set the board in low power mode).
+
+Unfortunately, it is very common that developer boards are not able to
+pass even the first step (e.g., some boards lock TrustZone secure mode
+at initialization). If the board is TrustZone-friendly though, step 4) is
+probably the most troublesome.
+
+Linux is usually designed to run in Secure mode (i.e., it has access to all
+devices and instructions). When running in Non-Secure mode there are several
+important differences that must be taken into account:
+
+    - Access Secure memory or Secure peripherals cause external aborts.
+    - Non-Secure page tables do not have TrustZone attributes.
+    - Some CPSR bits (abort/FIQ disable) are not writtable in Non-Secure mode
+      (because SafeG sets the AW/FW bits in the Secure Control Register).
+    - Clock settings (e.g., preescalers, gating) must be done in Secure mode
+      if the clock is shared by Secure and Non-Secure peripherals.
+    - Restrictions for Non-Secure accesses for control, configuration, and
+      maintenance registers to restrict access to secure data in the PL310
+      Cache controller (L2 cache).
+    - PLD amode2 (soft preload) in Non-Secure mode is a NOP operation.
+    - Registers in Coprocessor 15 (CP15) are often banked and present
+      different interface depending on the TrustZone state (see list below)
+
+A method for finding offending instructions in the Linux kernel consists of
+disassebling the Linux kernel binary and searching for them.
+
+For example, CP15 instructions can be searched with:
+
+    $ arm-none-eabi-objdump -d vmlinux > vmlinux.dis
+    $ arm-none-eabi-objdump -dS vmlinux > vmlinux-mix.dis
+    $ grep -i -E '(mcr.*)|(mrc.*)' vmlinux.dis > cp15_inst.txt
+
+Note: in Linux there maybe code in DATA sections. So either we have to
+dissasemble all sections (-D flag) or use a coredump of the kernel online.
+
+Here is a list of possible conflicts regarding to the CP15:
+
+----------------------------------------------------------------------------
+Secure Control Register
+MCR p15, 0, Rd, c1, c0, 0
+Secure Monitor or Privileged when NS=0
+Partially banked (if NT tries to write T-only bits, ignored. Read are ok)
+T only bits: FI bit (low latency), L4(T bit), RR(cache replacement algo), B(litle endian)
+
+Auxiliary Control Register
+MCR p15, 0, <Rd>, c1, c0, 1
+In NT it is read-only (writes = undefined exception)
+grep -i -E '(mcr.*cr1,.*cr0,.*1})|(mrc.*cr1,.*cr0,.*1})' vmlinux.dis
+
+Coprocessor Access Control Register
+MCR p15, 0, <Rd>, c1, c0, 2
+In NT, if Non-Secure Access Control Register is set to 0, read always
+return 00 and writes are ignored.
+grep -i -E '(mcr.*cr1,.*cr0,.*2})|(mrc.*cr1,.*cr0,.*2})' vmlinux.dis
+
+Secure Configuration Register
+MCR p15, 0, <Rd>, c1, c1, 0
+In NT, read or write = undefined exception
+grep -i -E '(mcr.*cr1,.*cr1,.*0})|(mrc.*cr1,.*cr1,.*0})' vmlinux.dis
+
+Secure Debug Enable Register
+MCR p15, 0, <Rd>, c1, c1, 1
+In NT, read or write = undefined exception
+grep -i -E '(mcr.*cr1,.*cr1,.*1})|(mrc.*cr1,.*cr1,.*1})' vmlinux.dis
+
+Non-Secure Access Control Register
+MCR p15, 0, <Rd>, c1, c1, 2
+In NT, read only. Write = undefined exception
+ALSO depending on the settings the access to other things are restricted:
+    - DMA
+    - Locking pages in TLB
+    - Cache lockdown entries
+    - coprocessors access (0..13)
+grep -i -E '(mcr.*cr1,.*cr1,.*2})|(mrc.*cr1,.*cr1,.*2})' vmlinux.dis
+
+Invalidate Entire Instruction Cache
+MCR p15, 0, <Rd>, c7, c5, 0
+In NT causes an Undefined exception if lockdown entries are reserved for the
+Secure world. Affect all Secure and Non-secure cache entries if the
+lockdown entries are not reserved for the Secure world. Globally flush
+the BTAC.
+grep -i -E '(mcr.*cr7,.*cr5,.*0})|(mrc.*cr7,.*cr5,.*0})' vmlinux.dis
+
+Invalidate Entire Data Cache.
+MCR p15, 0, <Rd>, c7, c6, 0
+In NT causes an Undefined exception. This prevents invalidating lockdown
+entries that might be configured as Secure.
+grep -i -E '(mcr.*cr7,.*cr6,.*0})|(mrc.*cr7,.*cr6,.*0})' vmlinux.dis
+
+Invalidate Both Caches
+MCR p15, 0, <Rd>, c7, c7, 0
+In NT causes an Undefined exception. But globally flushes the BTAC.
+grep -i -E '(mcr.*cr7,.*cr7,.*0})|(mrc.*cr7,.*cr7,.*0})' vmlinux.dis
+
+Clean Entire Data Cache.
+MCR p15, 0, <Rd>, c7, c10, 0
+In NT only affect Non-secure cache lines
+grep -i -E '(mcr.*cr7,.*cr10,.*0})|(mrc.*cr7,.*cr10,.*0})' vmlinux.dis
+
+Clean and Invalidate Entire Data Cache
+MCR p15, 0, <Rd>, c7, c14, 0
+In NT only affect Non-secure cache lines
+grep -i -E '(mcr.*cr7,.*cr14,.*0})|(mrc.*cr7,.*cr14,.*0})' vmlinux.dis
+
+Invalidate Instruction Cache Line, using MVA
+MCR p15, 0, <Rd>, c7, c5, 1
+Only affect Non-secure cache lines
+grep -i -E '(mcr.*cr7,.*cr5,.*1})|(mrc.*cr7,.*cr5,.*1})' vmlinux.dis
+
+Set/Index Invalidate Instruction Cache Line, using Index
+MCR p15, 0, <Rd>, c7, c5, 2
+Only affect Non-secure cache lines
+grep -i -E '(mcr.*cr7,.*cr5,.*2})|(mrc.*cr7,.*cr5,.*2})' vmlinux.dis
+
+Invalidate Data Cache Line, using MVA
+MCR p15, 0, <Rd>, c7, c6, 1
+Only affect Non-secure cache lines
+grep -i -E '(mcr.*cr7,.*cr6,.*1})|(mrc.*cr7,.*cr6,.*1})' vmlinux.dis
+
+Set/Index Invalidate Data Cache Line, using Index
+MCR p15, 0, <Rd>, c7, c6, 2
+Only affect Non-secure cache lines
+
+Clean Data Cache Line, using MVA
+MCR p15, 0, <Rd>, c7, c10, 1
+Only affect Non-secure cache lines
+
+Set/Index Clean Data Cache Line, using Index
+MCR p15, 0, <Rd>, c7, c10, 2
+Only affect Non-secure cache lines
+
+Prefetch Instruction Cache Line
+MCR p15, 0, <Rd>, c7, c13, 1
+Only affect Non-secure cache lines
+
+Clean and Invalidate Data Cache Line, using MVA
+MCR p15, 0, <Rd>, c7, c14, 1
+Only affect Non-secure cache lines
+
+Set/Index Clean and Invalidate Data Cache Line, using Index
+MCR p15, 0, <Rd>, c7, c14, 2
+Only affect Non-secure cache lines
+
+Invalidate Instruction Cache Range
+MCRR p15,0,<End Address>,<Start Address>,c5
+MCRR2 p15,0,<End Address>,<Start Address>,c5
+Only affect Non-secure cache lines
+
+Invalidate Data Cache Range
+MCRR p15,0,<End Address>,<Start Address>,c6
+MCRR2 p15,0,<End Address>,<Start Address>,c6
+Only affect Non-secure cache lines
+
+Clean Data Cache Rangea
+MCRR p15,0,<End Address>,<Start Address>,c12
+MCRR2 p15,0,<End Address>,<Start Address>,c12
+Only affect Non-secure cache lines
+
+Clean and Invalidate Data Cache Range
+MCRR p15,0,<End Address>,<Start Address>,c14
+MCRR2 p15,0,<End Address>,<Start Address>,c14
+Only affect Non-secure cache lines
+
+VA to PA translation in the other world
+MCR p15,0,<Rn>,c7,c8,4
+Only available in Secure world
+grep -i -E '(mcr.*cr7,.*cr8,.*4})|(mrc.*cr7,.*cr8,.*4})' vmlinux.dis
+
+Data and instruction cache lockdown registers
+MCR p15, 0, <Rd>, c9, c0, 0
+MCR p15, 0, <Rd>, c9, c0, 1
+If CL bit is not set in NSACR, in NT generates undefined exception
+grep -i -E '(mcr.*cr9,.*cr0,.*0})|(mrc.*cr9,.*cr0,.*0})' vmlinux.dis
+grep -i -E '(mcr.*cr9,.*cr0,.*1})|(mrc.*cr9,.*cr0,.*1})' vmlinux.dis
+
+Data TCM Region Register
+MCR p15, 0, <Rd>, c9, c1, 0
+If NS=0 in Data TCM nonsecure control access register, in NT generates
+undefined exception.
+grep -i -E '(mcr.*cr9,.*cr1,.*0})|(mrc.*cr9,.*cr1,.*0})' vmlinux.dis
+
+Instruction TCM Region Register
+MCR p15, 0, <Rd>, c9, c1, 1
+If NS=0 in Instruction TCM nonsecure control access register, in NT
+generates undefined exception.
+grep -i -E '(mcr.*cr9,.*cr1,.*1})|(mrc.*cr9,.*cr1,.*1})' vmlinux.dis
+
+Data TCM Non-secure Control Access Register
+MCR p15,0,<Rd>,c9,c1,2
+In NT undefined exception
+grep -i -E '(mcr.*cr9,.*cr1,.*2})|(mrc.*cr9,.*cr1,.*2})' vmlinux.dis
+
+Instruction TCM Non-secure Control Access Register
+MCR p15,0,<Rd>,c9,c1,3
+In NT undefined exception
+grep -i -E '(mcr.*cr9,.*cr1,.*3})|(mrc.*cr9,.*cr1,.*3})' vmlinux.dis
+
+Cache Behavior Override Register
+MCR p15, 0, <Rd>, c9, c8, 0
+Bits for secure, in NT are read as zero and if written they are ignored.
+grep -i -E '(mcr.*cr9,.*cr8,.*0})|(mrc.*cr9,.*cr8,.*0})' vmlinux.dis
+
+TLB Lockdown Register
+MCR p15,0,R0,c10,c0,0
+If TL bit in NSACR is not set, undefined exception
+grep -i -E '(mcr.*cr10,.*cr0,.*0})|(mrc.*cr10,.*cr0,.*0})' vmlinux.dis
+
+DMA registers
+MRC p15, 0, <Rd>, c11, c0, 0
+MRC p15, 0, <Rd>, c11, c0, 1
+MRC p15, 0, <Rd>, c11, c0, 2
+MRC p15, 0, <Rd>, c11, c0, 3
+MCR p15, 0, <Rd>, c11, c1, 0
+MCR p15, 0, <Rd>, c11, c2, 0
+MCR p15, 0, <Rd>, c11, c3, 0
+MCR p15, 0, <Rd>, c11, c3, 1
+MCR p15, 0, <Rd>, c11, c3, 2
+MCR p15, 0, <Rd>, c11, c5, 0
+MCR p15, 0, <Rd>, c11, c6, 0
+MCR p15, 0, <Rd>, c11, c7, 0
+MRC p15, 0, <Rd>, c11, c8, 0
+MCR p15, 0, <Rd>, c11, c15, 0
+If DMA bit is 0 in NSACR undefined exception.
+grep -i -E '(mcr.*cr11,.*cr.*})|(mrc.*cr11,.*cr.*})' vmlinux.dis
+
+Monitor Vector Base Address Register
+MRC p15, 0, <Rd>, c12, c0, 1
+In NT undefined exception
+grep -i -E '(mcr.*cr12,.*cr0,.*1})|(mrc.*cr12,.*cr0,.*1})' vmlinux.dis
+
+Secure User and Non-secure Access Validation Control Register
+MCR p15, 0, <Rd>, c15, c9, 0
+In NT undefined exception
+grep -i -E '(mcr.*cr15,.*cr9,.*0})|(mrc.*cr15,.*cr9,.*0})' vmlinux.dis
+
+Performance Monitor Control Registers
+MCR p15, 0, <Rd>, c15, c12, 0
+MCR p15, 0, <Rd>, c15, c12, 1
+MCR p15, 0, <Rd>, c15, c12, 2
+MCR p15, 0, <Rd>, c15, c12, 3
+MCR p15, 0, <Rd>, c15, c12, 7
+MCR p15, 0-3, <Rd>, c15, c13, 1-7
+MCR p15, 0, <Rd>, c15, c14, 0
+In NT. if Vbit in Secure User and Non-secure Access Validation Control Register
+is 0, reads AND/OR writes genereate undefined exception.
+grep -i -E '(mcr.*cr15,.*cr12,.*})|(mrc.*cr15,.*cr12,.*})' vmlinux.dis
+grep -i -E '(mcr.*cr15,.*cr13,.*})|(mrc.*cr15,.*cr13,.*})' vmlinux.dis
+grep -i -E '(mcr.*cr15,.*cr14,.*})|(mrc.*cr15,.*cr14,.*})' vmlinux.dis
+
+Instruction Cache Master Valid Register
+MCR p15, 3, <Rd>, c15, c8, <Register Number>
+in NT undefined exception
+grep -i -E '(mcr.*cr15,.*cr8,.*})|(mrc.*cr15,.*cr8,.*})' vmlinux.dis
+
+Data Cache Master Valid Register
+MCR p15, 3, <Rd>, c15, c12, <Register Number>
+in NT undefined exception
+grep -i -E '(mcr.*cr15,.*cr12,.*})|(mrc.*cr15,.*cr12,.*})' vmlinux.dis
+
+TLB lockdown access registers
+MCR p15, 5, <Rd>, c15, c4, 2
+MCR p15, 5, <Rd>, c15, c5, 2
+MCR p15, 5, <Rd>, c15, c6, 2
+MCR p15, 5, <Rd>, c15, c7, 2
+in NT undefined exception
+grep -i -E '(mcr.*cr15,.*cr[4-7],.*2})|(mrc.*cr15,.*cr[4-7],.*2})' vmlinux.dis
+----------------------------------------------------------------------------
+
+When the CP15Sdisable pin is set to 1 there are serveral CP15 registers that
+can't be WRITEN (READs are ok) in Secure mode (Non-Secure mode is not
+affected) and return undefined exection. Note that writing to that pin
+depends on the SoC. For example, in S3C6410 the register for that is at
+0x7E00_F900.
+
+List of instruction that is Undefined when CP15SDISABLE=1
+
+Secure Control Register
+MCR p15, 0, Rd, c1, c0, 0
+Secure Monitor or Privileged when NS=0
+
+Secure Translation Table Base Register 0
+MCR p15, 0, Rd, c2, c0, 0
+Secure Monitor or Privileged when NS=0
+
+Secure Translation Table Control Register
+MCR p15, 0, Rd, c2, c0, 2
+Secure Monitor or Privileged when NS=0
+
+Secure Domain Access Control Register
+MCR p15, 0, Rd, c3, c0, 0
+Secure Monitor or Privileged when NS=0
+
+Data TCM Non-secure Control Access Register
+MCR p15, 0, Rd, c9, c1, 2
+Secure Monitor or Privileged when NS=0
+
+Instruction/Unified TCM Non-secure Control Access Register
+MCR p15, 0, Rd, c9, c1, 3
+Secure Monitor or Privileged when NS=0
+
+Data TCM Region Registers
+MCR p15, 0, Rd, c9, c1, 0
+All TCM Base Registers for which the Data TCM Non-secure Control Access Register = 0
+
+Instruction/Unified TCM Region Registers
+MCR p15, 0, Rd, c9, c1, 1
+All TCM Base Registers for which the Instruction/Unified TCM Non-secure Control Access Register = 0
+
+Secure Primary Region Remap Register
+MCR p15, 0, Rd, c10, c2, 0
+Secure Monitor or Privileged when NS=0
+
+Secure Normal Memory Remap Register
+MCR p15, 0, Rd, c10, c2, 1
+Secure Monitor or Privileged when NS=0
+
+Secure Vector Base Register
+MCR p15, 0, Rd, c12, c0, 0
+Secure Monitor or Privileged when NS=0
+
+Monitor Vector Base Register
+MCR p15, 0, Rd, c12, c0, 1
+Secure Monitor or Privileged when NS=0
+
+Secure FCSE Register
+MCR p15, 0, Rd, c13, c0, 0
+Secure Monitor or Privileged when NS=0
+
+Peripheral Port remap Register
+MCR p15, 0, Rd, c15, c2, 4
+Secure Monitor or Privileged when NS=0
+
+Instruction Cache master valid register
+MCR p15, 3, Rd, c15, c8, {0-7}
+Secure Monitor or Privileged when NS=0
+
+Data Cache master valid register
+MCR p15, 3, Rd, c15, c12, {0-7}
+Secure Monitor or Privileged when NS=0
+
+TLB lockdown Index register
+MCR p15, 5, Rd, c15, c4, 2
+Secure Monitor or Privileged when NS=0
+
+TLB lockdown VA register
+MCR p15, 5, Rd, c15, c5, 2
+Secure Monitor or Privileged when NS=0
+
+TLB lockdown PA register
+MCR p15, 5, Rd, c15, c6, 2
+Secure Monitor or Privileged when NS=0
+
+TLB lockdown Attribute register
+MCR p15, 5, Rd, c15, c7, 2
+Secure Monitor or Privileged when NS=0
+
+Validation registers
+MCR p15, 0, Rd, c15, c9, 0
+MCR p15, 0, Rd, c15, c12, {4-7}
+MCR p15, 0, Rd, c15, c14, 0
+MCR p15, {0-7}, Rd, c15, c13, {0-7}
+Secure Monitor or Privileged when NS=0

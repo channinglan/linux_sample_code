@@ -1,0 +1,11 @@
+// CRE_FIFOCH(FIFOCH_NAME, num_blocks, block_size(word),
+//                   in_t_os_default_filter, in_nt_os_default_filter)
+CRE_FIFOCH(DOSCOM_FIFOCH_0, 16, 64, NULL_FILTER, NULL_FILTER)
+CRE_FIFOCH(DOSCOM_FIFOCH_1, 16, 64, NULL_FILTER, NULL_FILTER)
+CRE_FIFOCH(DOSCOM_FIFOCH_2, 16, 64, NULL_FILTER, NULL_FILTER)
+
+// CRE_SMEMCH(SMEMCH_NAME, size(word))
+CRE_SMEMCH(DOSCOM_SMEMCH_1, 256)
+
+// CRE_FILTER(FILTER_NAME, filter_function, in_t_os, in_nt_os)
+CRE_FILTER(DOSCOM_FILTER_ID_EVEN, filter_even, false, true)

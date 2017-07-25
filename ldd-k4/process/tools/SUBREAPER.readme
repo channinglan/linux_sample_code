@@ -1,0 +1,9 @@
+if (arg_running_as == SYSTEMD_USER) {
+                /* Become reaper of our children */
+                if (prctl(PR_SET_CHILD_SUBREAPER, 1) < 0) {
+                        log_warning("Failed to make us a subreaper: %m");
+                        if (errno == EINVAL)
+                                log_info("Perhaps the kernel version is too old (< 3.4?)");
+                }
+        }
+PR_SET_CHILD_SUBREAPER 是 Linux 3.4 加入的新特性。把它设置为非零值，当前进程就会变成 subreaper，会像 1 号进程那样收养孤儿进程了。

@@ -1,0 +1,201 @@
+
+                         TOPPERS/SafeG: Introduction
+                         ---------------------------
+
+                               Shinya Honda
+                              (honda@ertl.jp) 
+                             Daniel Sangorrin
+                       (daniel.sangorrin@gmail.com)
+                               19-Nov.-2013
+
+This file contains notes about TOPPERS/SafeG. Please, read them carefully.
+
+WHAT IS TOPPERS/SafeG?
+======================
+
+TOPPERS/SafeG, hereafter SafeG (Safety Gate), is a dual-OS architecture
+designed to concurrently execute an RTOS (Real-Time Operating System) and a
+GPOS (General-Purpose Operating System) on the same hardware platform. SafeG
+takes advantage of the ARM TrustZone security extensions which introduce the
+concept of Trust and Non-Trust (a.k.a. Secure and Non-Secure) states:
+
+    - Trust state provides similar behavior to existing privileged and user
+      mode levels in ARM processors.
+
+    - Code running under Non-Trust state, including privileged mode, cannot
+      access memory space (devices included) that was allocated for Trust
+      state usage, nor can it execute certain instructions that are
+      considered critical.
+
+In order to control the TrustZone state, a new mode called "Secure Monitor"
+mode has been added to ARM cores supporting TrustZone extensions. Switching
+between Trust and Non-Trust state is performed under Security Monitor mode,
+which is part of the Trust state, with interrupts disabled.
+
+TOPPERS/SafeG is composed of the following elements (see figure 1):
+
+    - Monitor: an implementation of TrustZone Secure Monitor.
+    - RTOS (or T-OS): the Trusted OS (typically an RTOS, e.g.: TOPPERS/FMP).
+    - GPOS (or NT-OS): the Non-Trusted OS (typically a GPOS, e.g.: GNU/Linux).
+
+                    +-------------+-------------+
+                    |             |             |
+                    |    RTOS     |    GPOS     |
+                    |   (T-OS)    |   (NT-OS)   |
+                    |             |             |
+                    +-------------+-------------+
+                    |          Monitor          |
+                    +---------------------------+
+                    |  ARM TrustZone processor  |
+                    +---------------------------+
+
+                        Fig 1. TOPPERS/SafeG
+
+The main properties of SafeG are:
+
+a.- Allows running an RTOS and a GPOS concurrently on top of the same
+    processor (single- or multi-core).
+
+b.- RTOS memory and devices are protected from ilegal accesses by the
+    GPOS. This is supported by configuring resources used by the RTOS
+    to be accessible only from Trust state. The remaining resources
+    are configured to be accessible both from Trust and Non-Trust state.
+
+c.- RTOS real-time requirements are guaranteed. Time isolation of the
+    RTOS activities is supported by carefully allocating two types of
+    interrupt (i.e.: FIQ and IRQ) to each TrustZone state:
+
+        - FIQ interrupts are forwarded to the RTOS.
+        - IRQ interrupts are forwarded to the GPOS.
+
+    In Trust state, IRQs are disabled so that the GPOS cannot interrupt
+    the execution of the RTOS. For that reason, the GPOS only executes
+    upon an explicit request by the RTOS. This is achieved through the
+    Secure Monitor Call (SMC) instruction. On the other hand, during the
+    GPOS execution, FIQs are enabled so that the RTOS can recover the
+    control of the  processor (e.g.: through the FIQ associated to the
+    system timer). TrustZone is configured to prevent the Non-Trust side
+    from disabling FIQ interrupts.
+
+d.- It takes advantage of hardware extensions in order to achieve very
+    low execution overhead.
+
+e.- The GPOS does not require major code modifications. Except for
+    device and memory usage configuration, the GPOS can be considered
+    to be executed under full virtualization.
+
+f.- The monitor's code footprint is very small and it runs with
+    interrupts disabled which can smooth critical system's certification.
+
+g.- It includes an efficient mechanism for both guest OS to communicate
+    with each other (known as SafeG COM).
+
+SafeG is developed within the TOPPERS project (http://www.toppers.jp/)
+and distributed under the TOPPERS license (see COPYING).
+
+ON WHAT HARDWARE DOES IT RUN?
+=============================
+
+SafeG is limited by design to ARM processors with support for the TrustZone
+security extensions (e.g., ARM Cortex-A9 or ARM1176). Additionally, the
+target board should support the following TrustZone security features:
+
+    a) Separation of Trust and Non-Trust memory and peripherals.
+    b) Separation of Trust and Non-Trust interrupts.
+
+In practice, not all boards containing TrustZone ARM processors have support
+for the features mentioned above - especially a) - and some boards contain
+read-only code that disables Trustzone at initialization. Unfortunately,
+it is also very common to find boards where TrustZone configuration
+functionality is not documented (typically a non-disclosure agreement is
+necessary to obtain such information).
+
+The best way to know which boards are supported by a specific version of
+SafeG is by looking at the 'monitor/target/' folder. Note that, due
+to manpower limitations, boards that were supported in previous versions of
+SafeG may no longer be included in modern versions. Also note that some
+boards may be supported partially. For example, due to lack of information
+it may be hard to provide support for the separation of memory and
+peripherals between both states in some boards.
+
+The following boards have been supported, to a certain degree, by previous
+versions of SafeG (but not necessarily by the current version):
+
+    - QEMU versatile Express A9x4
+    - Armadillo-800 EVA
+    - Xilinx Zynq
+    - Altera SoC
+
+DOCUMENTATION
+=============
+
+Documentation is stored under the 'doc/' folder where it is separated
+between languages (e.g., English=en and Japanese=jp). Note that folders
+are not mere translations and certain documentation may only be available in
+only one language.
+
+Documentation oriented to _users_ of SafeG is stored under the 'doc/$(LANG)/
+users/' directory. In contrast, documentation for _developers_ is stored under
+the 'doc/$(LANG)/developers/' folder.
+
+Documentation specific to a certain target board can be found under the
+following directory:
+
+    - 'doc/$(LANG)/target/$(TARGET_NAME)'
+
+A typical configuration (although not necessary) of a SafeG dual-OS
+system uses a TOPPERS real-time kernel on the Trusted side and a
+Linux-based OS on the Non-Trusted side. Documentation related to both
+guests is not included in SafeG. Please find it in their corresponding
+documentation folder.
+
+The logo for TOPPERS/SafeG can be found at:
+
+    - 'doc/logo/'
+
+Documentation for SafeG's communications library can be found at:
+
+    - 'doc/$(LANG)/com/'
+
+COMPILING TOPPERS/SafeG:
+========================
+
+Make sure that your host environment satisfies the requirements especified
+for your target board (see 'doc/$(LANG)/target/$(TARGET_NAME)/readme.txt').
+This typically involves a Unix environment with a modern ARM cross-compiler
+and essential utilities. The monitor is compiled by using the following
+command:
+
+    safeg$ make -C monitor/ TARGET=$(TARGET_NAME)
+
+Where $(TARGET_NAME) is the name of a target board supported by the current
+version of SafeG (a directory name in 'monitor/target/').
+
+Apart from the TARGET_NAME variable, other variables can be overwritten
+(e.g., TOOLCHAIN_PREFIX).
+
+Check the contents of the 'monitor/Makefile' and the 'monitor/target/
+$(TARGET_NAME)/Makefile.target' files in order to find out which variables
+can be configured.
+
+Similarly, the following command is used to clean the SafeG monitor folder:
+
+    safeg$ make -C monitor/ TARGET=$(TARGET_NAME) clean
+
+IF SOMETHING GOES WRONG
+=======================
+
+First, make sure that you have read the available documentation for your
+target board carefully and that you are following it exactly.
+
+If you have problems that seem to be due to TOPPERS/SafeG or TOPPERS/FMP
+bugs, please use the TOPPERS users mailing list to report them.
+
+    http://www.toppers.jp/en/community.html
+
+Please refrain from contacting the current maintainers directly if possible,
+since there may be other users that are facing the same problems as you.
+
+If you find a problem during the compilation or execution of other software,
+such as the Linux kernel or U-Boot, please refer to the documentation
+included in that software first.

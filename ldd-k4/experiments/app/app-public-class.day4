@@ -1,0 +1,36 @@
+1. oom 
+#su
+#swapoff -a
+#echo 1 > /proc/sys/vm/overcommit_memory
+
+run: training/debug/mm/munch.c
+#dmesg
+run: training/debug/mm/mmap.c with/without marco mlockall
+
+2. page reclaim
+launch firefox
+cat /proc/firefox-pid/smaps > 1
+run: training/debug/mm/munch.c
+cat /proc/firefox-pid/smaps > 2
+compare 1 and 2
+
+3. page cache
+drop cache at first:
+root@baohua-VirtualBox:/proc/sys/vm# echo 3 > drop_caches
+
+#free
+#dd if=/dev/sda1 of=/dev/null
+#free
+
+compare the output of the two free
+
+4. smem
+
+5. valgrind
+run: training/memory_check/valgrind
+
+6.  build a a.out with while(1)
+(1) run one ./a.out
+	cat /proc/a.out-pid/smaps | more
+(2) run two ./a.out
+	cat /proc/a.out-pid/smaps | more

@@ -1,0 +1,121 @@
+diff --git a/arch/arm/mach-socfpga/platsmp.c b/arch/arm/mach-socfpga/platsmp.c
+index 5299461..0159d5a 100644
+--- a/arch/arm/mach-socfpga/platsmp.c
++++ b/arch/arm/mach-socfpga/platsmp.c
+@@ -34,9 +34,11 @@ static int __cpuinit socfpga_boot_secondary(unsigned int cpu, struct task_struct
+ 	int trampoline_size = &secondary_trampoline_end - &secondary_trampoline;
+ 
+ 	if (cpu1start_addr) {
++#if 0
+ 		/* This will put CPU #1 into reset.*/
+ 		__raw_writel(RSTMGR_MPUMODRST_CPU1,
+ 			     rst_manager_base_addr + 0x10);
++#endif
+ 
+ 		memcpy(phys_to_virt(0), &secondary_trampoline, trampoline_size);
+ 
+diff --git a/arch/arm/mach-socfpga/socfpga.c b/arch/arm/mach-socfpga/socfpga.c
+index 329e180..d9aa486 100644
+--- a/arch/arm/mach-socfpga/socfpga.c
++++ b/arch/arm/mach-socfpga/socfpga.c
+@@ -340,15 +340,100 @@ static void socfpga_cyclone5_restart(char mode, const char *cmd)
+ 	writel(temp, rst_manager_base_addr + SOCFPGA_RSTMGR_CTRL);
+ }
+ 
++/*
++ * System call IDs for static system calls
++ */
++#define SAFEG_SYSCALL_ID__GETID     (0)
++#define SAFEG_SYSCALL_ID__SETPERM   (1)
++#define SAFEG_SYSCALL_ID__SWITCH    (2)
++#define SAFEG_SYSCALL_ID__SIGNAL    (3)
++#define SAFEG_SYSCALL_ID__REGDYN    (4)
++#define SAFEG_SYSCALL_ID__REGNOT    (5)
++
++/*
++ * SMC call to SafeG.
++ */
++
++/*
++ *  Get syscall ID
++ */
++static unsigned int noinline safeg_syscall_getid(const char *name, unsigned int *id)
++{
++	register unsigned int arg_r0 asm("r0") = SAFEG_SYSCALL_ID__GETID;
++	register unsigned int arg_r1 asm("r1") = (unsigned int)name;
++	register unsigned int arg_r2 asm("r2") = (unsigned int)id;
++	register unsigned int arg_r3 asm("r3") = 0;
++
++	/* Perform a Security Monitor Call (SMC), saving r12(ip) and r14(lr) */
++	__asm__ volatile (".arch_extension sec\n\t"                               
++					  "dsb\n\t"                                               
++					  "smc #0\n\t"                                            
++					  : "=r" (arg_r0)                                         
++					  : "0" (arg_r0), "r" (arg_r1), "r" (arg_r2), "r" (arg_r3)
++					  : "ip", "lr", "memory", "cc");
++
++	return arg_r0;
++}
++
++/*
++ * INVOKE: invokes a system call.
++ */
++static unsigned int  noinline safeg_syscall_invoke(unsigned int id,
++										 unsigned int a,
++										 unsigned int b,
++										 unsigned int c)
++{
++	register unsigned int arg_r0 asm("r0") = id;
++	register unsigned int arg_r1 asm("r1") = a;
++	register unsigned int arg_r2 asm("r2") = b;
++	register unsigned int arg_r3 asm("r3") = c;
++
++	/* Perform a Security Monitor Call (SMC), saving r4-r11, r12(ip), r14(lr) */
++	/* r11(fp) is not clobber list, however it will be saved */
++	__asm__ volatile (".arch_extension sec\n\t"
++					  "dsb\n\t"
++					  "smc #0\n\t"
++					  : "=r" (arg_r0)
++					  : "0" (arg_r0), "r" (arg_r1), "r" (arg_r2), "r" (arg_r3)
++					  : "r4", "r5", "r6", "r7", "r8", "r9", "r10", "ip", "lr", "memory", "cc");
++
++	return arg_r0;
++}
++
++static volatile unsigned int l2debug_set_id = 0;
++
++static void safeg_pl310_set_debug(unsigned long val) {
++	safeg_syscall_invoke(l2debug_set_id, val, 0, 0);
++}
++
++static void safeg_l2x0_init(void) {
++	char l2init_id_syscall_name[] = "l2init";
++	char l2debug_set_id_syscall_name[] = "l2debug";
++	unsigned int l2init_id = 0;
++
++	/* get l2init ID */
++	safeg_syscall_getid((char *)(virt_to_phys((void *)l2init_id_syscall_name)),
++						(unsigned int*)(virt_to_phys((void *)&l2init_id)));
++
++	/* call l2ini ID */
++	safeg_syscall_invoke(l2init_id, 0, 0, 0);
++
++	/* get l2debug_set ID */
++	safeg_syscall_getid((char *)(virt_to_phys((void *)l2debug_set_id_syscall_name)),
++						(unsigned int*)(virt_to_phys((void *)&l2debug_set_id)));
++}
++
+ static void __init socfpga_cyclone5_init(void)
+ {
+ #ifdef CONFIG_CACHE_L2X0
+ 	u32 aux_ctrl = 0;
+ 	socfpga_init_l2_ecc();
++	safeg_l2x0_init();
+ 	aux_ctrl |= (1 << L2X0_AUX_CTRL_SHARE_OVERRIDE_SHIFT) |
+ 			(1 << L2X0_AUX_CTRL_DATA_PREFETCH_SHIFT) |
+ 			(1 << L2X0_AUX_CTRL_INSTR_PREFETCH_SHIFT);
+ 	l2x0_of_init(aux_ctrl, ~0UL);
++	outer_cache.set_debug = safeg_pl310_set_debug;
+ #endif
+ 	of_platform_populate(NULL, of_default_bus_match_table,
+ 		socfpga_auxdata_lookup, NULL);

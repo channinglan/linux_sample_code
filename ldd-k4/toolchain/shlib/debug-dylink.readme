@@ -1,0 +1,77 @@
+to let linker search libraries in this dir, set:
+export LD_LIBRARY_PATH=/home/baohua/develop/training/toolchain/shlib
+
+barry@barry-VirtualBox:~/training/shlib$ gdb ./main 
+GNU gdb (Ubuntu/Linaro 7.4-2012.04-0ubuntu2.1) 7.4-2012.04
+Copyright (C) 2012 Free Software Foundation, Inc.
+License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.  Type "show copying"
+and "show warranty" for details.
+This GDB was configured as "i686-linux-gnu".
+For bug reporting instructions, please see:
+<http://bugs.launchpad.net/gdb-linaro/>...
+Reading symbols from /home/barry/training/shlib/main...done.
+(gdb) l
+1	#include "test.h"
+2	
+3	int main() {
+4		xyz = 100;
+5		foo();
+6		foo();
+7		foo2();
+8		foo2();
+9	
+10		return 0;
+(gdb) b 5
+Breakpoint 1 at 0x8048504: file main.c, line 5.
+(gdb) r
+Starting program: /home/barry/training/shlib/main 
+
+Breakpoint 1, main () at main.c:5
+5		foo();
+(gdb) disassemble 
+Dump of assembler code for function main:
+   0x080484f4 <+0>:	push   %ebp
+   0x080484f5 <+1>:	mov    %esp,%ebp
+   0x080484f7 <+3>:	and    $0xfffffff0,%esp
+   0x080484fa <+6>:	movl   $0x64,0x804a018
+=> 0x08048504 <+16>:	call   0x8048430 <foo@plt>
+   0x08048509 <+21>:	call   0x8048430 <foo@plt>
+   0x0804850e <+26>:	call   0x8048400 <foo2@plt>
+   0x08048513 <+31>:	call   0x8048400 <foo2@plt>
+   0x08048518 <+36>:	mov    $0x0,%eax
+   0x0804851d <+41>:	leave  
+   0x0804851e <+42>:	ret    
+End of assembler dump.
+(gdb) x/5i 0x8048430   -  plt for foo
+   0x8048430 <foo@plt>:	jmp    *0x804a00c   - got for foo
+   0x8048436 <foo@plt+6>:	push   $0x18          <-----
+   0x804843b <foo@plt+11>:	jmp    0x80483f0           |
+   0x8048440 <_start>:	xor    %ebp,%ebp                   |
+   0x8048442 <_start+2>:	pop    %esi                |
+(gdb) x/a 0x804a00c                                        |
+0x804a00c <foo@got.plt>:	0x8048436 <foo@plt+6>   ----
+(gdb) x/5i 0x80483f0
+   0x80483f0:	pushl  0x8049ff8
+   0x80483f6:	jmp    *0x8049ffc
+   0x80483fc:	add    %al,(%eax)
+   0x80483fe:	add    %al,(%eax)
+   0x8048400 <foo2@plt>:	jmp    *0x804a000
+(gdb) x/a 0x8049ffc
+0x8049ffc <_GLOBAL_OFFSET_TABLE_+8>:	0xb7ff26a0 <_dl_runtime_resolve>
+(gdb) watch *0x804a00c                     - got for foo will be "fixed"
+Hardware watchpoint 2: *0x804a00c
+(gdb) c
+Continuing.
+Hardware watchpoint 2: *0x804a00c
+
+Old value = 134513718
+New value = -1208122276
+_dl_fixup (l=<optimized out>, reloc_arg=<optimized out>) at dl-runtime.c:157
+157	dl-runtime.c: No such file or directory.
+(gdb) c
+Continuing.
+[Inferior 1 (process 8484) exited normally]
+(gdb) 
+

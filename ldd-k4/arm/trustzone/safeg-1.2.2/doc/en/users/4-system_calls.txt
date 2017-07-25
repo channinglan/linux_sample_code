@@ -1,0 +1,57 @@
+
+                         TOPPERS/SafeG: System Calls
+                         ---------------------------
+
+                             Daniel Sangorrin
+                       (daniel.sangorrin@gmail.com)
+                               26-March-2013
+
+This document describes the system calls interface of the TOPPERS/SafeG
+monitor.
+
+Overview
+========
+
+T and NT guest OSs are able to perform calls to SafeG's monitor while
+executing in supervisor (SVC) mode. SafeG supports two types of system
+calls:
+
+    - Static system calls: this is a set of system calls that are hardwired
+      inside the monitor's code and linked during the compilation process
+      of SafeG's monitor. They are provided to maintain a portable interface
+      between targets.
+
+    - Dynamic system calls: this functionality allows the registration of
+      new system calls by the T OS during run time. They execute in ARM
+      monitor mode with all interrupts disabled. They are mainly provided for
+      supporting target- or application-dependent system calls.
+
+Static system calls
+===================
+
+The SafeG monitor contains a total of 6 static system calls:
+
+    - getid: get the ID associated to a static or dynamic system call.
+    - setperm: sets the execution permissions of a dynamic system call.
+    - switch: switches to the opposite TZ world.
+    - signal: sends a signal (interrupt) to the opposite TZ world.
+    - regdyn: registers a dynamic system call.
+    - regnot: registers a notifier callback.
+
+Application interface (API)
+===========================
+
+Applications willing to use the system calls module should use the library
+at 'monitor/libsafeg/'.
+
+Please refer to 'monitor/libsafeg/syscalls_api.h' for a detailed explanation
+of the constants and functions that constitute the system calls API.
+
+Examples
+========
+
+The folder 'sample/fmp/syscall_signal' contains an example of an
+application using the signal static system call.
+
+The folder 'sample/fmp/dyn_fifo' contains an example of an application
+using the dynamic system calls interface.

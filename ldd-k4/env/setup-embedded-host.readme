@@ -1,0 +1,42 @@
+(1)  SSH server:
+sudo apt-get install openssh-server
+sudo /etc/init.d/ssh stop
+sudo /etc/init.d/ssh start
+
+(2)  NFS server:
+sudo apt-get install nfs-kernel-server
+
+打开/etc/exports文件，在末尾加入：
+/home/baohua *(rw,sync,no_root_squash)
+注：nfs允许挂载的目录及权限，在文件/etc/exports中进行定义，各字段含义如下：
+/home/xgc：要共享的目录
+* ：允许所有的网段访问
+rw ：读写权限
+sync：资料同步写入内在和硬盘
+no_root_squash：nfs客户端共享目录使用者权限
+重启服务：
+#sudo service nfs-kernel-server restart
+#showmount -e
+现在可以在本机上试一下：
+#sudo mount -t nfs localhost:/home/baohua /mnt
+#sudo umount /mnt
+如果用在嵌入式设备上挂载，要加上参数-o nolock
+
+(3)  tftp server:
+
+1.安装tftp-server
+sudo apt-get install tftpd-hpa
+sudo apt-get install tftp-hpa(如果不需要客户端可以不安装)
+tftp-hpa是客户端
+tftpd-hpa是服务器端
+
+2.配置TFTP服务器
+sudo vim /etc/default/tftpd-hpa
+将原来的内容改为:
+TFTP_USERNAME="tftp"
+TFTP_ADDRESS="0.0.0.0:69"
+TFTP_DIRECTORY="tftp根目录" #服务器目录,需要设置权限为777,chomd 777
+TFTP_OPTIONS="-l -c -s"
+
+3.重新启动TFTP服务
+sudo service tftpd-hpa restart

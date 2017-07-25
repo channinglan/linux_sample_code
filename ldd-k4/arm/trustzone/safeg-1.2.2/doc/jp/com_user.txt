@@ -1,0 +1,1177 @@
+﻿
+		TOPPERS/SafeG
+		Dual-OS COMユーザーズマニュアル
+
+		対応バージョン: Release 1.2.2
+		最終更新: 2015年10月02日
+
+このドキュメントは，Dual-OS COM を使用するために必要な事項を説明するも
+のである．
+
+----------------------------------------------------------------------
+  TOPPERS/SafeG Dual-OS monitor
+      Toyohashi Open Platform for Embedded Real-Time Systems/
+      Safety Gate Dual-OS monitor
+
+ Copyright (C) 2010-2015 by Embedded and Real-Time Systems Laboratory
+             Graduate School of Information Science, Nagoya Univ., JAPAN
+ 
+ 上記著作権者は，以下の(1)～(4)の条件を満たす場合に限り，本ソフトウェ
+ ア（本ソフトウェアを改変したものを含む．以下同じ）を使用・複製・改
+ 変・再配布（以下，利用と呼ぶ）することを無償で許諾する．
+ (1) 本ソフトウェアをソースコードの形で利用する場合には，上記の著作
+     権表示，この利用条件および下記の無保証規定が，そのままの形でソー
+     スコード中に含まれていること．
+ (2) 本ソフトウェアを，ライブラリ形式など，他のソフトウェア開発に使
+     用できる形で再配布する場合には，再配布に伴うドキュメント（利用
+     者マニュアルなど）に，上記の著作権表示，この利用条件および下記
+     の無保証規定を掲載すること．
+ (3) 本ソフトウェアを，機器に組み込むなど，他のソフトウェア開発に使
+     用できない形で再配布する場合には，次のいずれかの条件を満たすこ
+     と．
+   (a) 再配布に伴うドキュメント（利用者マニュアルなど）に，上記の著
+       作権表示，この利用条件および下記の無保証規定を掲載すること．
+   (b) 再配布の形態を，別に定める方法によって，TOPPERSプロジェクトに
+       報告すること．
+ (4) 本ソフトウェアの利用により直接的または間接的に生じるいかなる損
+     害からも，上記著作権者およびTOPPERSプロジェクトを免責すること．
+     また，本ソフトウェアのユーザまたはエンドユーザからのいかなる理
+     由に基づく請求からも，上記著作権者およびTOPPERSプロジェクトを
+     免責すること．
+ 
+ 本ソフトウェアは，無保証で提供されているものである．上記著作権者お
+ よびTOPPERSプロジェクトは，本ソフトウェアに関して，特定の使用目的
+ に対する適合性も含めて，いかなる保証も行わない．また，本ソフトウェ
+ アの利用により直接的または間接的に生じたいかなる損害に関しても，そ
+ の責任を負わない．
+ 
+ @(#) $Id: com_user.txt 816 2015-10-02 12:55:43Z ertl-honda $
+----------------------------------------------------------------------
+○概要
+
+Dual-OS COMは，通信はチャネルと呼ぶ通信路により，SafeG上で動作するT_OS
+とNT_OS間の通信を実現するモジュールである．
+
+Dual-OS COMを用いることで，T_OSとNT_OSの間で安全にメッセージのやり取りを
+行うことができる．T_OSの複数タスクとNT_OSの複数のプロセス間での通信を
+サポートし，複数のチャネルを用いることで同時に通信が可能である．
+
+現状サポートしているOSは，T_OSとしてASPカーネルとFMPカーネル，NT_OSと
+してはLinuxである．なお，本ドキュメントにおいて，タスクという言葉は
+T_OSで動作するタスクのことを，プロセスという言葉は，NT_OSで動作するプ
+ロセスを指すものとする．
+
+Dual-OS COMでは，次の2種類のチャネルを提供する．
+
+ ・FIFOチャネル
+ ・SMEMチャネル（共有メモリ）
+
+チャネルのインスタンスの生成は，コンフィギュレーションファイルに，使用
+するチャネルやフィルターの定義を記述し，Dual-OS COMのコンフィギュレータ
+を動作させることで作成する．コンフィギュレーションファイルの記述方式は
+ITORN仕様の静的APIと同様である．
+
+
+○制限事項
+
+現状のDual-OS COMは以下の制限がある．
+
+・FIFOチャネルを用いた通信では，FIFOチャネルのインスタンスごとに，一つ
+  のプロセスが読み書きを行える．タスクに関しては，複数のタスクが読み書
+  き可能であるが，イベント待ち状態になれるタスクは一つである．また，複
+  数のタスクが同時に読み書き要求を行った場合，通信の順序はFCFSとなる．
+  なお，共有メモリチャネルに関してはこれらの制約は存在しない【SGC5】．
+
+・生成できる最大インスタンス数は，FIFOチャネルが32個であり，SMEMチャネ
+  ルは1024個である．
+
+・同時にDual-OS COM を使用可能なNT_OSのタスクの上限は32個である．
+
+○FIFOチャネル
+
+●概要
+
+FIFOチャネルはOS間で同期データをやり取りするための通信機能である．
+
+FIFOチャネルは，コンフィギュレーションファイルに以下ののパラーメータを
+指定して宣言する．
+
+ ・名前
+ ・ブロック数
+ ・ブロックサイズ
+ ・T_OS用ディフォルトフィルター
+ ・NT_OS用ディフォルトフィルター
+
+コンフィギュレータ実行時に各FIFOチャネルに1から連続する個別のIDが割り
+振られ，そのIDを用いて通信を行う．
+
+コンフィギュレーション時は，チャネルの生成とそのパラメータを規定するの
+みであり，そのチャネルを使用するプロセスやタスクを前もって記述しておく
+ことはできない．
+
+各FIFOチャネルは次の要素で構成されている．
+
+ ・ブロックのデータ領域
+ ・T_OS->NT_OS FIFO
+ ・NT_OS->T_OS FIFO 
+ ・T_OS用登録フィルター
+ ・NT_OS用登録フィルター 
+ ・イベント
+ 
+各FIFOチャネルはデータを格納するブロックを複数持つ．各ブロックはIDで判
+別する．FIFOチャネルを用いた通信では，ブロックのIDを引数として，ブロッ
+ク単位で通信を行う．ブロック数とブロックサイズはコンフィギュレーション
+ファイルに記述するときに静的に指定可能である．
+
+●FIFO
+
+各FIFOチャネルは，NT_OSからT_OS向きと，T_OSからNT_OS向きのFIFOをそれぞ
+れ1つずつ持つ．このFIFOにデータを書き込んだブロックのブロックIDを入れ
+ることにより，データを受け渡しする．
+
+各FIFOのサイズは，チャネルのブロック数と同等である．FIFOがフルの場合に
+新たなブロックIDを送信した場合はエラーが返る．
+
+●ブロック
+
+ブロックはデータを格納する領域でコンフィギュレーション時に指定したサイ
+ズと個数確保される．ブロックは未割り当て状態と割り当て状態の2状態を持
+つ．未割り当て状態のブロックに対して，doscom_fifoch_alloc()を呼び出す
+と，その時点で未割り当て状態のブロックが一つ割り当て状態となる．
+
+割り当て状態のブロックは，その先頭アドレスをdoscom_fifoch_get()で取得
+し，読み書きすることが可能である．なお，割り当て状態のブロックはどちら
+のOSからも読み書き可能である．
+
+割り当て状態のブロックのIDを，FIFOチャネルのFIFOに送信することが可能で
+ある．
+
+割り当て状態のブロックに対して，doscom_fifoch_free()を呼び出すと，未割
+り当て状態となる．
+
+状態の変化時にはブロックの内容の初期化は行われないため注意が必要である
+．
+
+●フィルター
+
+また，FIFOチャネルでは，データの送信を低減させる仕組みとしてフィルター
+機能を持つ．
+
+ファイルターはコンフィギュレーション時に任意の関数を登録することが可能
+である．チャネルで使用するフィルターは，コンフィギュレーション時に静的
+に指定する事が可能である．また，doscom_filter_set()により動的に，ンフ
+ィギュレーション時に登録された別のフィルターに変更することも可能である．
+フィルターを無効にすることも可能である．
+
+フィルターを有効にしている場合，doscom_fifoch_enqueu()により，FIFOチャネル
+のFIFOにブロックIDを送付するタイミングでフィルターとして登録した関数が
+呼び出される．関数がtrueを返すととブロックIDはFIFOの格納される．一方，
+falseを返した場合はブロックIDはFIFOに格納されずエラーが返される．
+
+フィルター関数は，ブロックへのポイントとブロックサイズを引数に呼び出さ
+れる．
+
+フィルターには次の２種類が存在する．
+
+・T_OS用フィルター
+
+  T_OSからNT_OSに対してブロックIDを送信する場合に，T_OS実行環境で実行
+  されるフィルターである．NT_OS側からdoscom_filter_set()を呼び出す
+  ことにより，適用するフィルターを変更することが可能である．
+
+・NT_OS用フィルター
+
+  NT_OSからT_OSにブロックIDを送信する場合に，NT_OS側で実行されるフィル
+  ターである．T_OS側からdoscom_filter_set()を呼び出すことにより，適
+  用するフィルターを変更することが可能である．
+
+●イベント
+
+イベントは同期的に通信を行うための仕組みであり，プロセスやタスクはイベ
+ント待ちになることができ，イベントを通知すると，それらの待ちが解除され
+る【SGC7】．
+
+●再初期化
+
+FIFOチャネルを再初期化する機能を提供する．本機能を実行すると，指定した
+FIFOチャネルに対してイベント待ち状態のプロセス・タスクが存在すれば，そ
+のプロセス・タスクの待ちを解除する．この時，待ちを解除したプロセス・タ
+スクにはDOSCOM_RESTARTを返す【SGC8】．また，フィルターはディフォルトの
+フィルターとなる．
+
+
+●FIFOチャネルのプロセスの割り付け
+
+FIFOチャネルはインスタンスごとに，一つのプロセスが読み書きを行える【
+SGC4】．プロセスが使用するチャネルはdoscom_init()の引数に使用するFIFO
+チャネルのマスクビット値を渡す【SGC14】．
+
+プロセスが終了すると，FIFOチャネルのプロセスへの割り付けが解除される
+【SGC17】．その際，対象のFIFOチャネルに対してイベント待ち状態のタスク
+が存在すれば，そのタスクの待ちを解除する．この時，待ちを解除したタスク
+にはDOSCOM_RESTARTを返す．
+
+FIFOチャネルが使用中かどうかは，doscom_sense_fifoch()により取得可能で
+ある【SGC9】．
+
+SafeG-COMを使用している(オープンしている)プロセス数は，
+doscom_sense_process()により取得可能である【SGC21】．
+
+
+●データ送受信の例
+
+FIFOチャネルを用いたデータの送受信の概要は次のようになる．
+
+送信側は，まずブロックをアロケートし，ブロックIDを取得する．次に，取得
+したブロックIDのブロックのポインタを得る．そのバッファに送信したいデー
+タを書込み，書き込んだブロックIDをFIFOにエンキューする．
+
+受信側は，まずFIFOからブロックIDを受信する．次にブロックIDを指定してそ
+のブロックのポインタを取得する．そして，データを読み込む．該当のブロッ
+クが必要なくなった時に，そのブロックIDを指定してバッファを解放する．
+
+FIFOが空の場合はエラーが返る．データの受信待ちをする場合にはイベント待
+ちとし，送信側はFIFOにブロックIDを書き込み後，イベントを送信すればよい．
+FIFOチャネル使用時にイベント待ちとなる際，無限待ちが可能であるが，タイ
+ムアウト付きの機能の使用を推奨する．
+
+
+○SMEMチャネル
+
+●概要
+
+SMEMチャネルは，OS間で非同期なデータをやり取りするための通信機能である．
+
+SMEMチャネルは，コンフィギュレーションファイルに以下ののパラーメータを
+指定して宣言する．
+
+ ・名前
+ ・共有メモリのサイズ
+ 
+FIFOチャネルと同様に，コンフィギュレーション時にIDが割り振られ，このID
+によりそれぞれのチャネルを識別する．
+
+●共有メモリ
+
+SMEMチャネルは，内部に共有メモリを持つ．共有メモリのサイズはコンフィギ
+ュレーションファイルで指定可能である．
+
+●ロック・アンロック
+
+競合を避けるために，共有メモリには，共有メモリをロック/アンロックする
+APIが用意されている．このAPIは，共有メモリを使用中かを判断するためのも
+のであり，ロックされたとしても，共有メモリには書き込み可能である．
+
+共有メモリへのアクセスは，先頭アドレスを取得するAPIを呼び出して，取得
+したアドレスを用いてアクセスする．
+
+
+○終了処理
+
+NT_OSではプロセスの終了を契機として，通信の終了処理を行う．【SGC10】．
+
+プロセスが終了すると，そのプロセスに割り付けたFIFOチャネルに対してイベ
+ント待ち状態のタスクが存在すれば，そのタスクの待ちを解除する．この時，
+待ちを解除したタスクにはDOSCOM_RESTARTを返す【SGC20】．また，
+doscom_init()を呼び出したタスクに0x01のタスク例外を送る．
+
+あるプロセスが終了しても，終了したプロセスに割り付けたFIFOチャネル以外
+のFIFOチャネルで通信しているプロセスやタスクは継続して通信が可能である
+【SGC2】．
+
+あるプロセスが終了した後で，別のプロセスがDual-OS COMを利用する場合に
+は，そのプロセスの最初でdoscom_init()を呼び出すだけでよい．なお，終了
+処理ではFIFOは空に初期化するが，各ブロックのバッファは0に初期化しない
+ため，再使用時には前回の通信で使用していたデータがバッファに残っている
+点に注意すること【SGC19】．
+
+明示的に終了処理を呼び出すには，doscom_term()を呼び出す．
+
+NT_OSで呼び出した場合は，プロセス終了時と同等の処理を行う．
+
+T_OSから呼び出した場合は，全てのFIFOチャネルに対してイベント待ち状態の
+タスクが存在すれば，そのタスクの待ちを解除する．この時，待ちを解除した
+タスクにはDOSCOM_RESTARTを返す．doscom_init()を呼び出したタスクに0x02
+のタスク例外を送る．NT_OSを再起動する場合，再起動後の通信を実現するた
+めに呼び出す必要がある．
+
+上記の機能を用いて，NT_OSを再起動した後にCOM通信を開始するためには，
+T_OSで次のシーケンスを実施すればよい．
+
+1. COM終了API(doscom_terminate)呼び出し．
+   ・全FIFOの待ちタスク待ち解除
+   ・doscom_init()呼び出しタスクへのタスク例外の要求
+2. doscom_init()の呼び出し
+3. NT_OS再起動システムコール呼び出し
+
+
+○コンフィギュレーションAPI
+
+●FIFOチャネルの定義
+
+	CRE_FIFOCH(ID FIFOCH_NAME, uint32_t num_blocks, uint32_t block_size
+					FP t_os_filter, FP nt_os_filter)
+
+【パラメータ】
+	ID			FIFOCH_NAME		FIFOチャネル名
+	uint32_t	num_blocks		ブロック数
+	uint32_t	block_size		ブロックサイズ（byte）
+	FP			t_os_filter		T_OS用ディフォルトフィルター
+								フィルターを使用しない場合は NULL_FILTER を指
+								定する．
+	FP			nt_os_filter	NT_OS用ディフォルトフィルター
+								フィルターを使用しない場合は NULL_FILTER を指
+								定する． 
+
+【機能】
+
+FIFOチャネルを定義する．ブロックサイズは4byte境界に丸められる．
+
+
+●SMEMチャネル（共有メモリ）の定義
+
+	CRE_SMEMCH(ID SMEMCH_NAME, uint32_t size)
+
+
+【パラメータ】
+	ID			SMEM_NAME	SMEMチャネル名
+	uint32_t	size		共有メモリサイズ（byte）
+
+【機能】
+
+SMEMチャネルを定義する．共有メモリサイズは4byte境界に丸められる．
+
+
+●FILTERの定義
+
+	CRE_FILTER(ID FILTER_NAME, FP filter_function, bool_t in_t_os, bool_t in_nt_os)
+
+	ID	FILTER_NAME		フィルター名
+	FP	filter_function	フィルターとする関数名
+	bool_t	in_t_os		T_OS用フィルターの場合はtrue
+						T_OSからNT_OSにデータを送信する場合に，
+						T_OS側で実行されるフィルター
+	bool_t	 in_nt_os	NT_OS用フィルターの場合はtrue
+						NT_OSからT_OSにデータを送信する場合に，
+						NT_OS側で実行されるフィルター
+
+【機能】
+
+FILTERを定義する．フィルターとする関数はユーザープログラム中に宣言する
+必要がある．
+
+
+○ランタイムAPI
+
+NT_OS/T_OS共に同じAPIを使用可能である．NT_OS/T_OSで振る舞いが異なる異
+なる点に関しては，T_OS/NT_OSとして記載する．
+
+
+●Dual-OS COMの初期化
+
+	int doscom_init(doscom_mask_t fifoch_mask, doscom_time_t timeout);
+ 
+【引数】
+	 doscom_time_t	timeout		初期化待ちのタイムアウト時間(-1で無限待ち, 0でポーリング)
+								NT_OS側はサポートしていない．
+	 doscom_mask_t	fifoch_mask	アプリケーションが使用するFIFOチャネル
+								IDのマスク値．
+
+【エラーコード】
+	DOSCOM_EASSIGN		割り付けエラー
+						・fifoch_maskで指定したFIFOチャネルがすでに他のプロ
+						  セスで使用されている．  
+	DOSCOM_TIMEOUT		タイムアウト
+						・NT_OSの初期化が時間内に終了しなかった．
+	DOSCOM_ESREGION		共有メモリマップエラー(NT_OSのみ)
+						何らかの理由で共有メモリ領域がユーザー領域にマップ
+						できなかった．
+	DOSCOM_ECTX			コンテキストエラー(T_OSのみ)
+						・非タスクコンテキストからの呼び出し．
+	DOSCOM_EPARAM		パラメータエラー
+						・fifoch_maskで存在しないFIFOチャネルを指定【SGC6】
+	DOSCOM_OPROCESS		プロセス数エラー(NT_OSのみ)
+						・接続プロセス数が32個を超えている．
+	DOSCOM_EINIT		初期化エラー(NT_OSのみ)
+						・T_OSがdoscom_init()呼び出す前に実行した
+
+【機能】
+
+Dual-OS COMを初期化する．全てのランタイムAPIの前に本APIを呼び出す必要
+がある．初回起動時のみ，doscom_init()はT_OS側が先に呼び出しておく必要
+がある．T_OS側が呼び出す前に，NT_OS側が呼び出した場合はエラーとなる．
+NT_OSからの二回目以降の接続の際は，T_OSで予め呼び出しておく必要はない．
+
+NT_OSは呼び出したプロセスで使用するFIFOチャネルのビットマスクを
+fifoch_maskに指定する必要がある．T_OSでは，fifoch_maskの値は無視される
+【SGC12】．
+
+【T_OS】
+
+NT_OSが初期化終了するまでブロックする．タスクコンテキスト/CPUロック解
+除状態/ディスパッチ許可状態からのみ呼び出し可能である．
+
+【NT_OS】
+
+何らかの理由で共有メモリ領域をマップできない場合はDOSCOM_SREGIONを返
+す．
+
+
+●Dual-OS COMの終了処理
+
+	int doscom_term(void);
+
+【引数】
+	なし
+
+【エラーコード】
+	DOSCOM_NOINIT	未初期化エラー
+					Dual-OS COMが初期化されていない．
+
+【機能】
+
+Dual-OS COMを終了する．
+
+【T_OS】
+
+全てのFIFOチャネルに対してイベント待ち状態のタスクが存在すれば，そのタ
+スクの待ちを解除する．この時，待ちを解除したタスクにはDOSCOM_RESTARTを
+返す．
+
+最後にdoscom_init()を呼び出したタスクに0x02のタスク例外を送る．
+
+NT_OSを再起動する場合，再起動後の通信を実現するために呼び出す必要があ
+る．
+
+【NT_OS】
+
+呼び出し他プロセスに割り付けたFIFOチャネルに対してイベント待ち状態のタ
+スクが存在すれば，そのタスクの待ちを解除する．この時，待ちを解除したタ
+スクにはDOSCOM_RESTARTを返す．
+
+Dual-OS COMを使用している全てのプロセスが終了した場合は，doscom_init()
+を呼び出したタスクに0x01のタスク例外を送る．
+
+
+●NT_OSプロセス接続数の取得
+
+	int doscom_sense_process(uint32_t *p_process_num)
+
+【引数】
+	uint32_t	p_process_num	プロセス接続数を格納する変数のアドレス．
+
+【エラーコード】
+	DOSCOM_NOINIT	未初期化エラー
+					Dual-OS COMが初期化されていない．
+ 
+【機能】
+
+現在，Dual-OS COMを使用してる(/dev/safegをオープンしている)NT_OSのプロ
+セス数を*p_process_numに格納する．
+
+【NT_OS】
+
+DOSCOM_SUCCESSを返すだけであり，値の格納は行わない．
+
+
+●FIFOチャネルの使用状況の取得
+
+	int doscom_sense_fifoch(doscom_mask_t *p_fifoch_mask)
+
+【引数】
+	doscom_mask_t	p_fifoch_mask	使用状況を格納する変数のアドレス
+
+【エラーコード】
+	DOOSCOM_NOINIT	未初期化エラー
+					Dual-OS COMが初期化されていない．
+ 
+【機能】
+
+NT_OSのプロセスに割り付け済みのFIFOチャネルのマスク値を取得する．取得
+したマスク値のビットが1であるFIFOチャネルはいずれかのプロセスに割り付
+け済みであり，ビットが0の場合はどのプロセスにも割り付けられていない．
+
+
+●FIFOチャネルからのブロック割り当て
+
+	int doscom_fifoch_alloc(const doscom_id_t fifoch_id, doscom_id_t *p_block_id);
+
+【引数】
+	doscom_id_t		fifoch_id			対象FIFOチャネルのID．
+	doscom_id_t		*p_block_id		取得したブロックのIDを入れる変数へのポインタ
+
+【エラーコード】
+	DOSCOM_NOINIT	未初期化エラー
+					Dual-OS COMが初期化されていない．
+	DOSCOM_EPARAM	パラメータエラー
+					・fifoch_idが有効範囲外
+	DOSCOM_EASSIGN	割り付けエラー
+					・fifoch_idで指定したFIFOチャネルは別のプロセスに割り付けら
+					  れている．
+	DOSCOM_EALLOC	アロケーションエラー
+ 					・割り当て可能なブロックがない．
+ 
+【機能】
+
+fido_idで指定したチャネルからのブロックを割り当てる．
+
+【T_OS】
+
+呼び出し可能なコンテキストに制限はない．
+DOSCOM_EASSIGNを返すことはない．
+
+
+●FIFOチャネルへのブロック解放
+
+	int doscom_fifoch_free(const doscom_id_t fifoch_id, const doscom_id_t block_id);
+
+【引数】
+	doscom_id_t	fifoch_id		対象FIFOチャネルのID．
+	doscom_id_t	block_id	解放するブロックのID
+
+【エラーコード】
+	DOSCOM_NOINIT	未初期化エラー
+					Dual-OS COMが初期化されていない．
+	DOSCOM_EPARAM	パラメータエラー
+					・fifoch_idが有効範囲外
+					・block_idが有効範囲外
+	DOSCOM_EASSIGN	割り付けエラー
+					・fifoch_idで指定したFIFOは別のプロセスに割り付けら
+					  れている．
+	DOSCOM_EALLOC	アロケーションエラー
+					・block_idで指定したブロックは割り付けられていない．
+   
+【機能】
+
+fifoch_idで指定したFIFOチャネルに対して，block_idで示したブロックを解放
+する．ブロックすることはない．
+
+【T_OS】
+
+呼び出し可能なコンテキストに制限はない．
+DOSCOM_EASSIGNを返すことはない．
+
+
+●FIFOチャネルのブロックのポインタの取得
+
+	int doscom_fifoch_get(const doscom_id_t fifoch_id, doscom_id_t block_id, 
+							void **p_block);
+
+【引数】
+	doscom_id_t		fifoch_id		対象FIFOチャネルのID．
+	doscom_id_t		*block_id		対象ブロック
+	void			**p_block		取得したブロックへのポインタを格納する変数．
+
+【エラーコード】
+	DOSCOM_NOINIT	未初期化エラー
+					Dual-OS COMが初期化されていない．
+	DOSCOM_EPARAM	パラメータエラー
+					・fifoch_idが有効範囲外
+	DOSCOM_EASSIGN	割り付けエラー
+					・fifoch_idで指定したFIFOチャネルは別のプロセスに割り付けら
+					  れている．
+	DOSCOM_EALLOC	アロケーションエラー
+ 					・対象ブロックはアロケーションされていない
+ 
+【機能】
+
+fido_idで指定したチャネルのから，block_idで指定したのブロックの先頭ポ
+インタをp_blockで示す領域に格納する．
+
+
+【T_OS】
+
+呼び出し可能なコンテキストに制限はない．
+DOSCOM_EASSIGNを返すことはない．
+
+
+●FIFOチャネルのFIFOキューへのブロックIDの送付
+
+	int doscom_fifoch_enqueue(const doscom_id_t fifoch_id, const doscom_id_t block_id);
+
+【引数】
+	doscom_id_t	fifoch_id		対象FIFOチャネルのID．
+	doscom_id_t	block_id	解放するブロックのID
+
+【エラーコード】
+	DOSCOM_NOINIT	未初期化エラー
+					Dual-OS COMが初期化されていない．
+	DOSCOM_EPARAM	パラメータエラー
+					・fifoch_idが有効範囲外
+					・block_idが有効範囲外
+	DOSCOM_EASSIGN	割り付けエラー
+					・fifoch_idで指定したFIFOは別のプロセスに割り付けら
+					  れている．
+	DOSCOM_FILTER	フィルターエラー
+					・フィルターによりブロックIDがFIFOに格納されなかっ
+					  た．
+	DOSCOM_EALLOC	アロケーションエラー
+					・block_idで指定したブロックは割り付けられていない．
+	DOSCOM_FULL		FIFOキューフルエラー
+					・FIFOキューがフルで送付されたブロックIDを入れられない．
+
+
+【機能】
+
+fifoch_idで指定したFIFOチャネルに対して，block_idで示されたブロックIDを
+FIFOチャネルのキューに送付する．送信されるのはブロックのバッファではな
+く，ブロックIDのみである．ブロックすることはない．
+
+【T_OS】
+
+DOSCOM_EASSIGNを返すことはない．
+
+
+●FIFOチャネルのFIFOキューからのブロックIDの取得
+
+	int doscom_fifoch_dequeue(const doscom_id_t fifoch_id, doscom_id_t *p_block_id);
+
+【引数】
+	doscom_id_t	fifoch_id		対象FIFOチャネルのID．
+	doscom_id_t	*p_block_id	取得したブロックのIDへのポインタ
+
+【エラーコード】
+	DOSCOM_NOINIT	未初期化エラー
+					Dual-OS COMが初期化されていない．
+	DOSCOM_EPARAM	パラメータエラー
+					・fifoch_idが有効範囲外
+					・block_idが有効範囲外
+	DOSCOM_EASSIGN	割り付けエラー
+					・fifoch_idで指定したFIFOは別のプロセスに割り付けら
+					  れている．
+	DOSCOM_EALLOC	アロケーションエラー
+					・block_idで指定したブロックは割り付けられていない．
+	DOSCOM_EMPTY	エンプティエラー
+					・FIFOが空であった
+
+【機能】
+
+fifoch_idで指定したFIFOチャネルのFIFOキューからブロックIDを取得する．取
+得するのはブロックのバッファではなく，ブロックIDのみである．ブロックす
+ることはない．
+
+【T_OS】
+
+呼び出し可能なコンテキストに制限はない．DOSCOM_EASSIGNを返すことはな
+い．
+
+
+●FIFOチャネルのイベント送付
+
+	int doscom_fifoch_notify(const doscom_id_t fifoch_id);
+
+【引数】
+	doscom_id_t	fifoch_id	対象FIFOチャネルのID．
+
+【エラーコード】
+	DOSCOM_NOINIT	未初期化エラー
+					Dual-OS COMが初期化されていない．
+	DOSCOM_EPARAM	パラメータエラー
+					・fifoch_idが有効範囲外
+	DOSCOM_EASSIGN	割り付けエラー
+					・fifoch_idで指定したFIFOは別のプロセスに割り付けら
+					  れている．
+
+【機能】
+
+fifoch_idで指定したFIFOチャネルへイベントを送付する．ブロックすることは
+ない．イベントは1回分キューイング可能．
+
+【T_OS】
+
+呼び出し可能なコンテキストに制限はない．
+DOSCOM_EASSIGNを返すことはない．
+
+
+●FIFOチャネルのイベント受信
+
+	int doscom_fifoch_wait(const doscom_id_t fifoch_id, const doscom_time_t timeout);
+
+【引数】
+	doscom_id_t		fifoch_id	対象FIFOチャネルのID．
+	doscom_time_t	timeout	タイムアウト時間(-1で無限待ち, 0でポーリング)
+							NT_OS側はサポートしていない．
+               
+【エラーコード】
+	DOSCOM_NOINIT	未初期化エラー
+					Dual-OS COMが初期化されていない．
+	DOSCOM_EPARAM	パラメータエラー
+					・fifoch_idが有効範囲外
+	DOSCOM_EASSIGN	割り付けエラー
+					・fifoch_idで指定したFIFOは別のプロセスに割り付けら
+					  れている．
+	DOSCOM_TIMEOUT	タイムアウト
+					・timeout時間内にイベントを受信しなかった
+ 	DOSCOM_ECTX		コンテキストエラー
+					・非タスクコンテキストからの呼び出し．
+	DOSCOM_RESTART	リスタートエラー
+	DOSCOM_WAITOVER	ウェイトオーバーエラー
+					・すでに別のタスクが対象チャネルに対して待ち状態と
+					  なっている．
+
+  
+【機能】
+
+fifoch_idで指定したFIFOチャネルからのベントを待つ．
+ 
+【T_OS】
+
+タスクコンテキスト/CPUロック解除状態/ディスパッチ許可状態からのみ呼び
+出し可能である．タイムアウト時間を指定可能である．
+DOSCOM_EASSIGNを返すことはない．
+待ち状態となることが可能なタスクは１つだけである．すでに他のタスクが待
+ち状態となっているFIFOチャネルに対して本APIを呼び出すと，
+DOSCOM_WAITOVERが返る．
+
+【NT_OS】
+
+タイムアウト時間は無視される．イベントを受け取るまで待つ．
+
+
+●FIFOチャネルへのフィルターのセット
+
+	int doscom_filter_set(const doscom_id_t fifoch_id, const doscom_id_t filter_id);
+
+【引数】
+	doscom_id_t	fifoch_id		フィルターをセットするFIFOチャネルのID
+	doscom_id_t	filter_id	セットするフィルターのID
+
+【エラーコード】
+	DOSCOM_NOINIT	未初期化エラー
+					Dual-OS COMが初期化されていない．
+	DOSCOM_EPARAM	パラメータエラー
+					・fifoch_idが有効範囲外
+					・filter_idが有効範囲外
+	DOSCOM_EASSIGN	割り付けエラー
+					・fifoch_idで指定したFIFOは別のプロセスに割り付けら
+					  れている．
+
+【機能】
+
+fifoch_idで指定したFIFOチャネルに，filter_idで指定したフィルターをセッ
+トする．ブロックすることはない．filter_id に NULL_FILTER(-1)を指定する
+とフィルターが解除される．DEFAULT_FILTER(-2)を指定するとディフォルトの
+フィルターとなる．
+
+【T_OS】
+
+呼び出し可能なコンテキストに制限はない．
+DOSCOM_EASSIGNを返すことはない．
+NT_OS側がFIFOにブロックIDを送信する際に適用するフィルターを変更する．
+
+【NT_OS】
+
+T_OS側がFIFOにブロックIDを送信する際に適用するフィルターを変更する．
+
+●FIFOチャネルの再初期化
+
+	int doscom_fifoch_init(doscom_id_t fifoch_id)
+
+【引数】
+	doscom_id_t	fifoch_id		対象FIFOチャネルのID
+
+【エラーコード】
+	DOSCOM_NOINIT	未初期化エラー
+					Dual-OS COMが初期化されていない．
+	DOSCOM_EPARAM	パラメータエラー
+					・fifoch_idが有効範囲外
+	DOSCOM_EASSIGN	割り付けエラー
+					・fifoch_idで指定したFIFOは別のプロセスに割り付けら
+					  れている．
+
+【機能】
+
+fifoch_idで指定したFIFOチャネルを初期化する．二つのFIFOの内容は空になる．
+また，フィルターはディフォルトのフィルターとなる．
+
+【T_OS】
+
+初期化対象のチャネルでイベント待ち状態のタスクがあれば，その待ちを解除する
+DOSCOM_EASSIGNを返すことはない．
+
+
+●SMEMチャネルの共有メモリのポインタの取得
+
+	int doscom_smemch_get(const doscom_id_t smemch_id, void **p_smemch);
+
+【引数】
+	doscom_id_t	smemch_id		対象SMEMチャネル
+	void		**p_mem		取得した共有メモリへのポインタを格納する変数．
+
+【エラーコード】
+	DOSCOM_NOINIT	未初期化エラー
+					Dual-OS COMが初期化されていない．
+	DOSCOM_EPARAM	パラメータエラー
+					・smemch_idが有効範囲外
+
+【機能】
+
+smemch_idで指定したSMEMチャネルの共有メモリへのポインタとサイズを取得す
+る．ブロックすることはない．
+
+【T_OS】
+
+呼び出し可能なコンテキストに制限はない．
+
+
+●SMEMチャネルのロック取得の試行
+
+	int doscom_smemch_trylock(const doscom_id_t smemch_id);
+
+【引数】
+	doscom_id_t	smemch_id		対象SMEMチャネルのID
+
+【エラーコード】
+	DOSCOM_NOINIT	未初期化エラー
+					Dual-OS COMが初期化されていない．
+	DOSCOM_EPARAM	パラメータエラー
+					・smemch_idが有効範囲外
+	DOSCOM_LOCKED	ロック済みエラー
+					・smemch_idで指定したSMEMチャネルはロック済み
+  
+【機能】
+
+smemch_idで指定したSMEMチャネルののロックを取得ブロックすることはない．
+
+
+●SMEMチャネルのロックの解放
+
+	int doscom_smemch_unlock(const doscom_id_t smemch_id);
+
+【引数】
+	doscom_id_t	smemch_id		対象SMEMチャネルのID
+
+【エラーコード】
+	DOSCOM_NOINIT	未初期化エラー
+					Dual-OS COMが初期化されていない．
+	DOSCOM_EPARAM	パラメータエラー
+					・smemch_idが有効範囲外
+	DOSCOM_UNLOCKED	オブジェクト状態エラー
+					・smemch_idで指定したSMEMチャネルはロック開放済み
+
+【機能】
+
+smemch_idで指定したSMEMチャネルのロックを開放する．ブロックすることはな
+い．
+
+
+○エラーコード
+
+DOSCOM_SUCCESS     (0) : success
+DOSCOM_NOINIT     (-1) : communications system not initialized yet.
+DOSCOM_EPARAM     (-2) : incorrect parameter.
+DOSCOM_FILTER     (-3) : the block was discarded
+DOSCOM_EALLOC     (-4) : the block is not allocated.
+DOSCOM_TIMEOUT    (-5) : a timeout occurred
+DOSCOM_LOCKED     (-6) : the smem channel is locked
+DOSCOM_UNLOCKED   (-7) : the smem channel is unlocked
+DOSCOM_ESREGION   (-8) : the shared regison initialize error
+DOSCOM_RESTART    (-9) : restart s communications system
+DOSCOM_ECTX      (-10) : context error
+DOSCOM_EASSIGN   (-11) : the fifo channel is assigned other process
+DOSCOM_EMPTY     (-12) : no block is enqueued.
+DOSCOM_WAITOVER  (-13) : an other task is waitting for the channel
+DOSCOM_OPROCESS  (-14) : number of connected process is over
+DOSCOM_EINIT     (-15) : NT_OS calls init before T_OS calls init
+
+○コンフィギュレーション
+
+チャネルのインスタンスの生成は，コンフィギュレーションファイルに，使用
+するチャネルやフィルターの定義を記述し，Dual-OS COMのコンフィギュレー
+タを動作させることで作成する．コンフィギュレーションファイルの記述方式
+はITORN仕様の静的APIと同様である．
+
+コンフィギュレーションの結果は，それぞれ次のファイルに出力される．
+
+ T_OS用  : t_os-doscom_config.h
+ NT_OS用 : nt_os-doscom_config.h 
+ 
+上記ファイル中に各チャネルに名前に割り付けたID番号が定義される．
+
+
+○ユーザーファイル
+
+ユーザーは以下のファイルをインクルードする必要がある．
+
+./com/src/doscom.h
+
+さらにターゲットOSやターゲットプロセッサ毎のフォルダにパスを通す必要が
+ある．xxxは使用するターゲットとターゲットOSに合わせる．
+
+./com/src/xx
+./com/src/target/xxx
+
+
+また，ユーザー用関数と，ターゲットOS毎のライブラリをユーザープログラム
+と共にビルドする必要がある．
+
+./com/src/doscom_user.h
+./com/src/xxx/doscom_kernel.c
+
+
+○アプリケーション開発の流れ
+
+Dual-OS COMを用いたアプリケーション開発の流れは次のようになる．それぞ
+れサンプルプログラム(com)のファイルを例に説明する．
+
+サンプルプログラムは，以下のフォルダにある．
+
+ASPカーネル用
+./sample/asp/com
+
+FMPカーネル用
+./sample/fmp/com
+
+
+0.ファイル構成
+
+サンプルプログラムのファイル構成は次のようになっている．
+ ./com_clean.sh    : ファイルのクリーンのためのバッチファイル
+ ./com_config.sh   : コンフィギュレーションのためのバッチファイル
+ ./config.txt      : コンフィギュレーションファイル
+ ./gpos            : Linuxアプリケーション用のフォルダ
+   ./gpos_app.c    : Linuxアプリケーション記述
+   ./Makefile      : Linuxアプリケーション用Makefile
+ ./rtos            : ASPカーネルアプリケーション用フォルダ
+   ./Makefile      : ASPカーネルアプリケーション用Makefile
+   ./sample1.c     : ASPカーネルアプリケーション記述
+   ./sample1.cfg   : ASPカーネルアプリケーションコンフィギュレーション
+                     ファイル
+   ./sample1.h     : ASPカーネルアプリケーションヘッダーファイル
+
+1.コンフィギュレーションの記述
+コンフィギュレーションファイル(config.txt)に使用するチャネルやフィルタ
+ーの定義を記述する．記述はITORN仕様の静的APIと同様の方法で記述する．
+
+2.コンフィギュレーション
+Dual-OS COMのコンフィギュレータを呼び出して，1で記述したコンフィギュレ
+ーションファイルを処理して必要なファイルを生成する．
+
+サンプルプログラムではコンフィギュレーションのためのバッチファイル
+(com_config.sh)を実行することによりコンフィギュレーションが実行される．
+
+コンフィギュレーションの結果は，それぞれ次のファイルに出力される．
+
+ T_OS用  : t_os-doscom_config.h
+ NT_OS用 : nt_os-doscom_config.h 
+
+3.アプリケーション記述
+Dual-OS COMのAPIを用いてLinuxアプリケーションとASPカーネルアプリケーシ
+ョンを開発する．上記のコンフィギュレーションファイルをインクルードする．
+
+
+4.Linuxアプリケーションのビルドとインストール
+3で作成したLinuxアプリケーションをビルドする．サンプルの場合は以下のコ
+マンドでビルドする．xxx.exe が生成されていれば成功．
+
+ $cd gpos
+ $make
+
+ビルドしたファイルをルートファイルシステムにコピーする．
+
+5.ASPカーネルアプリケーションのビルド
+4で作成したLinuxアプリケーションをビルドする．サンプルの場合は以下のコ
+マンドでビルドする．asp.elfないしfmp.elf が生成されていれば成功．
+
+ $cd rtos
+ $make depend
+ $make
+
+6.実行
+5.で生成したasp.elfないしfmp.elfをロードして実行．Linuxが起動した後に4
+でルートファイルシステムにコピーしたLinuxアプリケーションを実行する．
+
+
+○初期化
+
+Dual-OS COMを使用する場合は，まず初期化関数scom_init()を呼び出す必要が
+ある．
+
+NT_OSではプロセス毎に呼び出す必要あり，T_OSではシステムで１度呼び出せ
+ばよい．
+
+NT_OSにおいては，1個のFIFOチャネルを複数のプロセスで共有することはでき
+ない．あるプロセスにより使用中のチャネルの情報は，ビットマスクの形で管
+理する．
+
+ビットマスクの0ビット目はFIFOチャネルID0に，31ビット目はFIFOチャネル
+ID31に対応する．ビットが1の場合は，対応するFIFOチャネルが使用中である
+ことを意味する．
+
+各プロセスでチャネルの初期化関数（scom_init()）を呼び出すときの引
+数として，そのプロセスが使用するFIFOチャネルのマスク値を渡すことで，呼
+び出したプロセスと使用するチャネルとの関連付けがなされる．
+
+T_OSについてはタスクがアクセス可能なFIFOチャネルに対する制限はない．
+
+
+==========================================================================
+開発者向け情報(ToDo 古いので更新する)
+==========================================================================
+○Dual-OS COMで使用される構造体
+
+
+○共有リージョンのフォーマット
+
+共有リージョン（SMEMチャネルとは異なる）は，T_OSとNT_OSの間でチャネル
+を用いて通信するために確保される領域のことである．この領域に，T_OSと
+NT_OSの間で通信を行うために必要なデータを置く．共有リージョンは次のよ
+うに使用される．
+
+・制御ブロック(3*4 byte)
+    サイズ   オフセット : マクロ名     : 用途
+  ・4byte  :  0x00      : CTL_T2NT_REQ : T2NT通知領域
+  ・4byte  :  0x04      : CTL_NT2T_REQ : NT2N通知領域
+  ・4byte  :  0x08      : CTL_ARG      : 通知引数
+
+・FIFOチャネル管理ブロック(xx * チャネル数byte) : ベースオフセット : 0x0C
+        サイズ : 構造体名          : 用途
+  ・4byte      : t2nt_fifo.p_write : T2NT FIFO writeポインタ
+  ・4byte      : t2nt_fifo.p_read  : T2NT FIFO readポインタ
+  ・(ブロック数+1)*4Byte : t2nt_fifo.p_buffer :T2NT FIFO バッファ（+1は環状バッファ管理上のマージン）
+  ・4byte      : nt2t_fifo.p_write : NT2T FIFO writeポインタ
+  ・4byte      : nt2t_fifo.p_read  : NT2T FIFO readポインタ
+  ・(ブロック数+1)*4Byte : nt2t_fifo.p_buffer : NT2T FIFO バッファ （+1は環状バッファ管理上のマージン）
+  ・4byte      : p_ch->p_t2nt_filter_id : T2NT フィルターID
+  ・4byte      : p_ch->p_nt2t_filter_id : NT2T フィルターID
+  ・((ブロックサイズ+1)*4Byte)*ブロック数 : _ch->p_blocks_buffer : ブロック配列
+
+・ペンディングイベント管理ブロック : (ToD FIFOチャネルブロックに入れる)
+  ・4byte*チャネル数 : T2NTペンディングフラグ
+  ・4byte*チャネル数 : NT2Tペンディングフラグ
+
+・SMEM管理ブロック(xx * 共有メモリ数)
+        サイズ     : 構造体名          : 用途
+  ・4byte          : p_shmem->p_lock   : ロックフラグ
+  ・バッファサイズ : p_shmem->p_buffer : 共有メモリ
+
+○割込みによる各種通知
+  NT_OSからT_OS
+     マクロ名  : 値   : 要求内容
+  ・CTL_NT2T_APPEXIT ->  CTL_NT2T_REQ_PROCESSEXIT : 0x01 : プロセスが終了
+  ・CTL_NT2T_APPEXIT ->  CTL_NT2T_REQ_NOTIFY   : 0x02 : イベントの通知
+  ・TL_NT2T_CONNECT ->  CTL_NT2T_REQ_PROCESSOPEN : 0x03 : プロセスがDual-OS COMを使用開始(open)
+  ・CTL_NT2T_PID     ->  CTL_NT2T_REQ_REGFIFOCH : 0x04   : FIFOチャネルのプロセスへの登録
+  ・CTL_NT2T_REQ_FIFO ->  CTL_NT2T_REQ_INITFIFOCH : 0x05 : FIFOチャネルの初期化
+  ・CTL_NT2T_REQ_INIT : 0x87654321 : 初期化要求  
+
+  T_OSからNT_OS
+  ・CTL_T2NT_INIT : 0x12345678 : 初期化要求  
+  
+○起動の流れ
+・T_OS側でscom_init()を呼び出す．
+  ・ __scom_kernel_shregion_init()が呼び出される
+    ・共有領域を0クリア．
+   
+  ・共有リージョンにアクセスするためのポインタを設定
+
+  ・__scom_kernel_init()が呼び出される．
+    ・the_scom_kernel.initialized を falseに設定（最初期化を防ぐため）
+    ・T2NT通知領域を CTL_T2NT_INIT(0x12345678) に設定する．
+    ・キャッシュをフラッシュ
+    ・OS間割込みを許可
+    ・NT_OSからの初期化割込み待ち（セマフォ待ち）
+
+・NT_OS側でscom_init()を呼び出す．
+  ・ __scom_kernel_shregion_init()が呼び出される
+    /dev/safegをユーザ空間にマップする
+
+  ・共有リージョンにアクセスするためのポインタを設定
+
+  ・scom_kernel_register_idが呼び出される
+    ・マスク値が指定されていなければエラー
+    ・既に使用されているチャネルを指定していたらエラー
+    ・NT_OS側で接続数と接続状況を更新
+    ・NT2T通知領域にCTL_NT2T_PID(0x4)を書き込む
+    ・チャネルID通知領域にチャネルIDを書き込む
+    ・send_nt2t_irq()でT_OS側に割込みを発生
+
+  ・T_OS側でscom_handler()が実行される．
+    ・NT2N 通知領域がCTL_T2NT_PID(0x4)なら，
+     ・T_OSで保持しているマスク値を更新
+     ・チャネルIDの使用状況を保存する
+
+ ・/dev/safegでscom_ioctl_init()が呼び出される．
+   ・T2NT通知領域を チェックして CTL_T2NT_INIT(0x12345678) でなければエラー．
+   ・NT2N通知領域にCTL_NT2T_INIT(0x87654321)を書き込む．
+   ・send_nt2_t_irq()でT_OS側に割込みを発生
+
+ ・T_OS側でscom_handler()が実行される．
+   ・the_scom_kernel.initialized が false かつ NT2N 通知領域が
+     CTL_T2NT_INIT(0x12345678)なら，
+     ・T2NT通知領域を 0x00 にクリア
+     ・NT2T通知領域を 0x00 にクリア
+     ・セマフォにより__scom_kernel_init() を起床させる．
+
+
+○通信終了の流れ
+
+・NT_OSのアプリが異常終了
+ ・/dev/safegでsafeg_release()が呼び出される．
+   ・終了したプロセスが使用していたチャネルIDのマスク値を生成する
+   ・NT_OSで保持しているマスク値を更新する
+   ・NT2N通知領域にCTL_NT2T_REQ_APPEXITを書き込む．
+   ・send_nt2_t_irq()でT_OS側に割込みを発生
+
+・T_OS側のscom_handler()が実行される
+  ・NT2N通知領域をチェックしてCTL_NT2T_REQ_APPEXITなら
+   ・NT2N通知領域を 0 にクリア．
+   ・NT_OSから送られたチャネルIDのマスク値を取得
+   ・T_OSで保持している接続数とマスク値を更新．
+   ・終了したチャネルでイベント待ちとなっているタスクがあれば，そのタスクを起
+   床する
+   ・scom_init()を呼び出したタスクにタスク例外を送る．
+
+
+○/dev/safegとCOM割り込み
+
+Dual-OS COMでは，NT_OSの/devディレクトリに，safegという名前のデバイス
+ドライバが用意される．
+
+/dev/safegは，OS間でのCOM割込みを提供するほか，カーネル空間で保持する
+データ（チャネルのイベント発生状況や各チャネルの情報）を管理したり，共
+有リージョン(後述)にアクセスするために，物理メモリと仮想メモリの変換を
+行うドライバである．
+
+なお，/dev/safegでは，実際の通信に使用するための共有リージョンの管理は
+行わなわず，共有リージョンの管理は，ユーザーレベルのライブラリ関数で行
+う．
+
+ユーザープログラムがライブラリ関数経由で/dev/safegにアクセスすることで，
+T_OSに対するCOM割込みを発生させることができる．COM割込みが発生すると，
+T_OSではscom_handlerという割込みハンドラが起動する．このハンドラで，割
+込みを発生させた理由に基づいた処理を行う．
+
+現在の仕様では，以下の状況でT_OSに対するCOM割込みが発生する．
+
+・/dev/safegをオープンした時
+・Dual-OS COMを初期化した時
+・/dev/safegをクローズした時
+・T_OSに何らかの事象（イベント）の発生を通知するとき
+・プロセスが使用するチャネルを登録するとき
+・doscom_fifo_init()を呼び出した時
+
+
+○参考資料(ToDo 図の中の元データを手に入れる，図を見直す)
+
+./doc/jp/figureに，Dual-OS COMの理解の参考を目的とした図を幾つか載せる．
+それぞれのファイルの概要は以下のとおりである．
+
+・safeg-com.png
+    SafeG-COMの概要
+・com_init.png
+    SafeG-COMを初期化する際の処理の流れ
+・com_int.png
+    後述するCOM割込みが発生した時の処理の流れ
+・com-event.png
+    イベント通知発生時の処理の流れ（NT->Tへの通知を想定）
+・com-ex-multi.png
+    汎用OSのプロセスIDの使用方法に関する記述
+・com-fifo.ng
+    FIFOチャネル通信時の処理の流れ
+・com-release.png
+    SafeG-COMを用いて通信中の汎用OSのプロセスが終了した時の処理の流れ
+・com-shmem.png
+    共有メモリチャネル通信時の処理の流れ
+
+以上．

@@ -1,0 +1,72 @@
+1. strace/ltrace
+写一个最简单的有printf类似的程序，用strace/lstrace跟踪
+
+2. 学会使用pcduino3
+串口连接（kermit）；    c, ctrl \ c, exit
+网口连接(板子和PC直连)；  scp,ssh
+观察根文件系统； 
+
+3. 学会使用gdbserver
+把电脑上的~/develop/training/debug/gdb下面编译好的gdb-exam拷贝到pcduino3的/usr/bin
+用gdbserver(pcduino3)和arm-linux-gnueabihf-gdb（电脑）进行调试
+
+4. 在板子内核源代码(~/develop/pcduino/kernel)下面的drivers/char添加一个hello.c, 并修改Kconfig和Makefile
+hello.c如下：
+#include <linux/init.h>
+#include <linux/module.h>
+
+static int __init hello_init(void)
+{
+	printk(KERN_INFO "Hello World enter\n");
+	return 0;
+}
+module_init(hello_init);
+
+static void __exit hello_exit(void)
+{
+	printk(KERN_INFO "Hello World exit\n ");
+}
+module_exit(hello_exit);
+
+Kconfig和Makefile修改如下：
+diff --git a/drivers/char/Kconfig b/drivers/char/Kconfig
+index a043107..d0e4d83 100644
+--- a/drivers/char/Kconfig
++++ b/drivers/char/Kconfig
+@@ -4,6 +4,16 @@
+ 
+ menu "Character devices"
+ 
++config HELLO
++	tristate "hello world"
++	default n
++	help
++	  Say Y here if you want to support the /dev/mem device.
++	  The /dev/mem device is used to access areas of physical
++	  memory.
++	  When in doubt, say "Y".
++
++
+ source "drivers/tty/Kconfig"
+ 
+ config DEVMEM
+diff --git a/drivers/char/Makefile b/drivers/char/Makefile
+index d8a7579..d5c084f 100644
+--- a/drivers/char/Makefile
++++ b/drivers/char/Makefile
+@@ -2,6 +2,7 @@
+ # Makefile for the kernel character device drivers.
+ #
+ 
++obj-$(CONFIG_HELLO)	+= hello.o
+ obj-y				+= mem.o random.o
+ obj-$(CONFIG_TTY_PRINTK)	+= ttyprintk.o
+ obj-y				+= misc.o
+
+通过make ARCH=arm menuconfig配置内核。
+编译内核(尝试把hello编译为.ko和直接built-in 2种情况)，重新烧卡。
+并放到板子上去跑。
+
+5. 跑fork/vfork的例子(路径~/develop/training/process/fork)
+
+

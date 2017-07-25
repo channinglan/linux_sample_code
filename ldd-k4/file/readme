@@ -1,0 +1,3 @@
+#sudo mount -o remount,mand /
+#touch mandatory.txt
+#chmod g+s,g-x mandatory.txt

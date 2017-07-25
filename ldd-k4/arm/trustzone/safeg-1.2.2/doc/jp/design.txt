@@ -1,0 +1,180 @@
+		TOPPERS/SafeG
+		TOPPERS/SafeG 設計書
+
+		対応バージョン: Release 1.2.2
+		最終更新: 2015年9月28日
+
+○Linuxドライバについて
+
+●Linuxドライバの仕様
+
+errno.hに定義されたエラーコード（正の値）を負の値に変換して戻り値とし
+て返却．成功の場合は0，ioctl()等が正の値に変換してerrnoに設定する．
+
+errnoの範囲は，1～124
+
+エラーコードの意味は次の通り．
+http://linuxjm.osdn.jp/html/LDP_man-pages/man3/errno.3.html
+
+●ioctl()の仕様
+
+成功の場合は非負の値，エラーの場合は-1が返り，errnoにドライバからリタ
+ーンしたエラーが設定される．
+
+
+●ドライバ関数(doscom.c)とライブラリ関数(doscom_kernel.c)のエラーコー
+  ドの関係
+
+凡例
+ドライバ関数(doscom.c) : ライブラリ関数(doscom_kernel.c)
+ ・エラー要因
+   ドライバでのエラーコード : ライブラリ関数でのエラーコード
+
+・open(safeg_open()) : __doscom_kernel_sregion_init
+  ・T-OS未初期化
+    -EAGAIN : DOSCOM_EINIT
+  ・プロセス数オーバー
+    -EUSERS : DOSCOM_OPROCESS
+  
+・mmap(safeg_mmap()) : __doscom_kernel_sregion_init
+  ・アドレスエラー，remap_pfn_range()エラー
+    -EAGAIN : DOSCOM_ESREGION
+  ・サイズエラー
+    -EINVAL : DOSCOM_ESREGION
+
+・release(safeg_release()) : 
+
+・doscom_ioctl_init() : __doscom_kernel_init()
+  ・T-OS未初期化
+    -EAGAIN : DOSCOM_EINIT
+  ・初期化データコピーエラー
+    -EFAULT : DOSCOM_ESREGION
+  ・FIFOやイベント数が最大値以上の場合
+    -EINVAL : DOSCOM_EPARAM
+  ・管理用メモリが確保出来なかった場合
+    -ENOMEM : DOSCOM_ESREGION
+     
+・doscom_ioctl_regfifoch() : __doscom_kernel_init()
+  ・ドライバ未初期化
+    -ENOTTY : DOSCOM_NOINIT
+  ・使用済みのFIFOチャネルを指定した場合
+    -EALREADY : DOSCOM_EASSIGN
+     
+・doscom_ioctl_notify() : __doscom_kernel_notify()
+  ・ドライバ未初期化
+    -ENOTTY : DOSCOM_NOINIT
+  ・不正なチャネルID
+    -EINVAL : DOSCOM_EPARAM
+  ・非割り付けFIFOを指定  
+    -EACCES : DOSCOM_EASSIGN
+
+・doscom_ioctl_wait() :  __doscom_kernel_wait()
+  ・ドライバ未初期化
+    -ENOTTY : DOSCOM_NOINIT
+  ・不正なチャネルID
+    -EINVAL : DOSCOM_EPARAM
+  ・非割り付けFIFOを指定  
+    -EACCES : DOSCOM_EASSIGN
+  ・再初期化されて待ちが解除された
+    -ERESTART : DOSCOM_RESTART  
+
+・doscom_ioctl_get_fifoch_mask() : __doscom_kernel_get_fifoch_mask()
+  ・ドライバ未初期化
+    -ENOTTY : DOSCOM_NOINIT
+  
+・doscom_ioctl_fifoch_init() : __doscom_kernel_fifoch_init()
+  ・ドライバ未初期化
+    -ENOTTY : DOSCOM_NOINIT
+  ・不正なチャネルID
+    -EINVAL : DOSCOM_EPARAM
+  ・非割り付けFIFOを指定  
+    -EACCES : DOSCOM_EASSIGN
+    
+○NS状態からS状態に遷移する際のBranch Target Address Cache (BTAC) のクリ
+アについて
+
+●背景
+
+i.MX6においてSafeGによりLinux+FMPを実行した際，Linuxにおいて，MMUを有
+効にして，仮想アドレスで実行を開始した以降に，T(FMP)側に割込みが入って
+，遷移し，割込みハンドラを実行中に多重または，連続した割込みが入るとメ
+モリから不正な値を読み込み，その結果例外が発生するという問題が発生した．
+発生後，デバッガでメモリを確認したところ，正しい値が読み込めている．
+
+
+●解決方法
+
+NSからSに遷移するタイミングでBPIALLによりBTACをクリアすると正しく動作
+した．
+
+
+●BTACをクリアする理由
+
+以下にはMMUを無効にする際にはBTACをクリアしろと書いている．
+http://www.xilinx.com/support/answers/52033.html
+これから予想できることは，BTACは分岐先を論理アドレスで保持している．
+
+BTACの内部の詳細は不明だが，キャッシュのようにNSとSの識別のためのタグ
+が付いてないとすると，ワールド切り替え後はメモリ空間が異なるため，MMU
+無効と状況は同じと考えられる．
+
+
+●S状態でBTACがクリアできるか
+
+	mcr	p15, 0, ip, c7, c5, 6	BPIALL
+	dsb
+
+ARMアーキテクチャマニュアルによると，S側でBPIALLを実行すると全ての分岐
+予測をクリアする．
+
+Secure Must invalidate all entries.
+
+ARM R Architecture Reference Manual ARMv7-A and ARMv7-R edition 
+20 May 2014 C.c
+Effects of the Security and Virtualization Extensions on the maintenance operations
+Table B2-3
+B2-1285
+
+
+●BTACのクリアタイミング
+
+NSからSに遷移するタイミングでクリアする．
+
+1.NS側からのsmc呼び出し時．
+2.NS側実行時のFIQ受付
+
+それぞれ，どちらのワールドから来たかでブランチを行うが，ブランチでBTAC
+を使用する可能性があるので，ブランチの前に条件実行によりクリアを行う．
+
+
+○COMの再起動処理について
+
+NT-Linuxのプロセスが再起動した場合と，NT-Linux自身が再起動した場合に分け
+て考える．
+
+●プロセス再起動
+
+NT-APP   : アプリケーション終了
+NT-Linux : SafeGドライバのsafeg_release()が呼び出される
+           ・割り付けられているFIFOチャネルを開放
+           ・T-FMP側に割込みをCTL_NT2T_REQ_PROCESSEXITを引数に発生．
+T-FMP    : NT-Linuxからの割込みにより起動
+          ・終了したプロセスの関連のFIFOに対する待ちタスクの待ち解除           
+          ・doscom_init()呼び出しタスクへタスク例外の要求
+T-APP    : アプリレベルの再初期化処理
+           ・doscom_init()の呼び出し
+
+
+●NT-Linux再起動
+
+   Linux側から要求 or RTOSによる判断
+  
+T-FMP : COM終了API(doscom_terminate)呼び出し．
+       ・the_doscom_user.initialized = false
+       ・全FIFOの待ちタスク待ち解除
+       ・doscom_init()呼び出しタスクへタスク例外の要求       
+T-APP : アプリレベルの再初期化処理
+       ・doscom_init()の呼び出し
+       ・NT-Linux再起動システムコール呼び出し
+
+以上．

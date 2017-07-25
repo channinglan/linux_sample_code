@@ -1,0 +1,55 @@
+实验课 - 第一天
+	1.写一个工具自动分析文件系统中程序与库的依赖关系图;
+(1) cd ~/develop/linux
+(2) sudo mount -o loop,offset=$((2048*512)) extra/vexpress.img extra/img
+(3) cd extra/img
+(4) generate diagram: 
+baohua@baohua-VirtualBox:~/develop/linux/extra/img$ sudo ~/develop/training/toolchain/binso_dep.sh -o /tmp/1.png -r . usr/sbin/flash_erase
+Analyzing dependencies of usr/sbin/flash_erase...
+
+Parsing file:              usr/sbin/flash_erase
+Parsing file:              libgcc_s.so.1
+Parsing file:              libc.so.6
+Parsing file:              ld-linux.so.3
+Creating output as /tmp/1.png...
+
+	2.写一个工具自动分析文件系统中程序与库的符号依赖;
+baohua@baohua-VirtualBox:~/develop/linux/extra/img$ sudo ~/develop/training/toolchain/nm/symbol-dep.sh -s usr/sbin/flash_erase -d lib/libc.so.6 
+Dependencies between usr/sbin/flash_erase and lib/libc.so.6:
+abort
+calloc
+close
+closedir
+__errno_location
+
+	3.gcov白盒覆盖率
+~/develop/training/toolchain/gcov
+
+	4.gdb 
+code path: 
+~/develop/training/debug/gdb
+(1)gdb attach pid
+(2)gdb tui
+(3)gdb call functions
+(4)gdb debug multithreads:
+	training/thread/thread_life.c
+(5)ddd
+(6)strip, objdump and gdb
+
+	5. 用 strace和ltrace跟踪一个应用对内核和库的调用
+
+	6. 跟踪和拦截Linux应用程序对动态库的调用
+training/toolchain/ldpreload: following readme
+
+	7. 实验进程生命周期各步骤
+~/develop/training/process/life_period.c
+体验父进程先死，体验孤儿进程被托孤；
+体验子进程死，但是父进程不wait。
+
+	8. renice, chrt调整进程、线程，分析CPU利用率
+~/develop/training/thread/thread_life.c
+开启其中的死循环
+
+	9. 观察一个动态链接过程
+~/develop/training/toolchain/shlib
+debug-dylink.readme

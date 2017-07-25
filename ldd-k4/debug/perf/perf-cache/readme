@@ -1,0 +1,120 @@
+1. perf stat -e cache-misses ./test  
+
+ Performance counter stats for './test':
+
+            82,158 cache-misses                                                
+
+       0.967247129 seconds time elapsed
+
+2. perf stat -e cache-misses ./test2
+
+ Performance counter stats for './test2':
+
+             2,994 cache-misses                                                
+
+       0.111402707 seconds time elapsed
+
+3.
+
+$ sudo perf record -e cache-misses ./test
+[ perf record: Woken up 1 times to write data ]
+[ perf record: Captured and wrote 0.020 MB perf.data (~881 samples) ]
+
+$ perf report  
+
+Events: 218  cache-misses                                                                                                                                                       
+ 55.00%  test  [kernel.kallsyms]   [k] filemap_fault
+ 26.97%  test  test                [.] add
+  4.68%  test  [kernel.kallsyms]   [k] __ticket_spin_lock
+  2.33%  test  [kernel.kallsyms]   [k] get_page_from_freelist
+  1.37%  test  libpthread-2.15.so  [.] __libc_read
+  1.30%  test  [kernel.kallsyms]   [k] account_user_time
+  0.83%  test  [kernel.kallsyms]   [k] drain_cpu_pagevecs
+  0.83%  test  [kernel.kallsyms]   [k] __mem_cgroup_uncharge_common
+  0.73%  test  [kernel.kallsyms]   [k] update_wall_time
+  0.58%  test  [kernel.kallsyms]   [k] smp_apic_timer_interrupt
+  0.54%  test  [kernel.kallsyms]   [k] update_curr
+  0.47%  test  [kernel.kallsyms]   [k] hrtimer_interrupt
+  0.45%  test  [kernel.kallsyms]   [k] __do_softirq
+  0.34%  test  [kernel.kallsyms]   [k] cpuacct_update_stats
+  0.28%  test  [kernel.kallsyms]   [k] rcu_check_callbacks
+  0.28%  test  [kernel.kallsyms]   [k] run_timer_softirq
+  0.27%  test  [kernel.kallsyms]   [k] printk_tick
+  0.24%  test  [kernel.kallsyms]   [k] do_timer
+  0.24%  test  [kernel.kallsyms]   [k] scheduler_tick
+  0.23%  test  [kernel.kallsyms]   [k] native_write_msr_safe
+  0.22%  test  [kernel.kallsyms]   [k] logarithmic_accumulation
+  0.21%  test  [kernel.kallsyms]   [k] task_tick_fair
+  0.18%  test  [kernel.kallsyms]   [k] rebalance_domains
+  0.17%  test  [kernel.kallsyms]   [k] calc_global_load
+  0.16%  test  [kernel.kallsyms]   [k] check_cpu_stall.isra.35
+  0.16%  test  [kernel.kallsyms]   [k] __rcu_pending
+  0.14%  test  [kernel.kallsyms]   [k] ktime_get
+  0.14%  test  [kernel.kallsyms]   [k] __percpu_counter_add
+  0.13%  test  [kernel.kallsyms]   [k] __ticket_spin_unlock
+  0.13%  test  [kernel.kallsyms]   [k] hrtimer_run_pending
+  0.11%  test  [kernel.kallsyms]   [k] timerqueue_del
+  0.10%  test  [kernel.kallsyms]   [k] _raw_spin_lock_irq
+  0.09%  test  [kernel.kallsyms]   [k] update_process_times
+  0.04%  test  [kernel.kallsyms]   [k] mm_alloc
+  0.03%  test  [kernel.kallsyms]   [k] schedule
+  0.00%  test  [kernel.kallsyms]   [k] perf_pmu_rotate_start.isra.40
+
+4.
+
+sudo perf record -e cache-misses ./test2
+sudo perf report
+
+Events: 9  cache-misses                                                                                                                                                         
+ 94.76%  test2  [kernel.kallsyms]  [k] __percpu_counter_add
+  3.72%  test2  [kernel.kallsyms]  [k] prep_new_page
+  1.44%  test2  libc-2.15.so       [.] __strchr_ia32
+  0.04%  test2  [kernel.kallsyms]  [k] mm_alloc
+  0.03%  test2  [kernel.kallsyms]  [k] finish_wait
+  0.00%  test2  [kernel.kallsyms]  [k] perf_pmu_rotate_start.isra.40
+  0.00%  test2  [kernel.kallsyms]  [k] kmem_cache_alloc
+
+5. gcc multi.c
+
+Events: 4K cache-misses                                                                                                                                                         
+ 88.56%  a.out  a.out              [.] Muti_kij
+  5.88%  a.out  a.out              [.] Muti_jki
+  1.40%  a.out  [kernel.kallsyms]  [k] ____pagevec_lru_add_fn
+  0.66%  a.out  [kernel.kallsyms]  [k] zap_pte_range
+  0.28%  a.out  [kernel.kallsyms]  [k] update_curr
+  0.19%  a.out  a.out              [.] Muti_ijk
+  0.17%  a.out  [kernel.kallsyms]  [k] ioread32
+  0.16%  a.out  [kernel.kallsyms]  [k] __ticket_spin_lock
+  0.16%  a.out  [kernel.kallsyms]  [k] check_cpu_stall.isra.35
+  0.16%  a.out  [iwlwifi]          [k] iwlagn_rx_statistics
+  0.11%  a.out  [kernel.kallsyms]  [k] __percpu_counter_add
+  0.08%  a.out  [kernel.kallsyms]  [k] account_user_time
+  0.08%  a.out  [kernel.kallsyms]  [k] run_timer_softirq
+  0.08%  a.out  [kernel.kallsyms]  [k] perf_rotate_context
+  0.08%  a.out  [kernel.kallsyms]  [k] do_timer
+  0.08%  a.out  [kernel.kallsyms]  [k] __rcu_pending
+  0.08%  a.out  [kernel.kallsyms]  [k] cpuacct_update_stats
+  0.07%  a.out  [kernel.kallsyms]  [k] pgd_alloc
+  0.06%  a.out  [kernel.kallsyms]  [k] page_fault
+  0.06%  a.out  [kernel.kallsyms]  [k] __ticket_spin_unlock
+  0.05%  a.out  [kernel.kallsyms]  [k] do_softirq
+  0.05%  a.out  [kernel.kallsyms]  [k] printk_tick
+  0.05%  a.out  [kernel.kallsyms]  [k] hrtimer_interrupt
+  0.05%  a.out  [kernel.kallsyms]  [k] rcu_exit_nohz
+  0.05%  a.out  [kernel.kallsyms]  [k] set_normalized_timespec
+  0.05%  a.out  [kernel.kallsyms]  [k] update_cfs_load
+  0.05%  a.out  [kernel.kallsyms]  [k] update_rt_offset
+  0.05%  a.out  [kernel.kallsyms]  [k] update_cfs_shares
+  0.05%  a.out  [kernel.kallsyms]  [k] acct_update_integrals
+  0.05%  a.out  [kernel.kallsyms]  [k] account_process_tick
+  0.05%  a.out  [kernel.kallsyms]  [k] tick_do_update_jiffies64
+  0.05%  a.out  [kernel.kallsyms]  [k] prep_new_page
+  0.04%  a.out  [iwlwifi]          [k] iwlagn_translate_rx_status.isra.1
+  0.03%  a.out  [kernel.kallsyms]  [k] vm_normal_page
+  0.03%  a.out  [kernel.kallsyms]  [k] read_tsc
+  0.03%  a.out  [kernel.kallsyms]  [k] __do_softirq
+  0.03%  a.out  [kernel.kallsyms]  [k] timekeeping_adjust
+  0.03%  a.out  [kernel.kallsyms]  [k] apic_timer_interrupt
+  0.03%  a.out  [kernel.kallsyms]  [k] timerqueue_del
+  0.03%  a.out  [kernel.kallsyms]  [k] x86_pmu_disable
+

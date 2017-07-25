@@ -1,0 +1,82 @@
+1. 运行second字符驱动
+在电脑上
+进入~/develop/training/kernel/drivers/second目录,make编译
+$ sudo insmod second.ko
+然后cat /proc/devices 观察变化，发现second设备
+$ cat /proc/devices 
+Character devices:
+  1 mem
+  4 /dev/vc/0
+  ...
+248 second
+250 hidraw
+...
+创建节点：
+sudo mknod /dev/second c 248 0
+
+运行测试程序
+sudo ./second_test 
+seconds after open /dev/second :1
+seconds after open /dev/second :2
+...
+
+2. 运行globalfifo
+进入~/develop/training/kernel/drivers/globalfifo/ch12，加载
+sudo insmod globalfifo-dev.ko
+sudo insmod globalfifo.ko
+后，/dev/下面会自动创建/dev/globalfifo节点：
+baohua@baohua-VirtualBox:~/develop/training/kernel/drivers/globalfifo/ch12$ ls -l /dev/globalfifo 
+crw------- 1 root root 10, 54  4月 12 14:28 /dev/globalfifo
+在一个终端：
+sudo cat /dev/globalfifo 
+在另外一个终端：
+$ sudo sh -c 'echo hello > /dev/globalfifo'
+[sudo] password for baohua: 
+
+观察前一个cat的终端，分析代码
+
+3. signalio
+在一个终端运行：
+~/develop/training/kernel/drivers/globalfifo/ch12$ sudo ../ch9/globalfifo_test 
+...
+
+在另外一个终端：
+sudo sh -c 'echo hello > /dev/globalfifo'
+
+分析globalfifo_test中打印的
+receive a signal from globalfifo,signalnum:29
+
+分析~/develop/training/kernel/drivers/globalfifo/ch9/globalfifo_test.c程序
+
+4. 修改pcduino3的dts
+在~/develop/pcduino/kernel/arch/arm/boot/dts/sun7i-a20-pcduino3-nano.dts中disable gmac节点：
+diff --git a/arch/arm/boot/dts/sun7i-a20-pcduino3-nano.dts b/arch/arm/boot/dts/sun7i-a20-pcduino3-nano.dts
+index 1757a6a..8d6d2def 100644
+--- a/arch/arm/boot/dts/sun7i-a20-pcduino3-nano.dts
++++ b/arch/arm/boot/dts/sun7i-a20-pcduino3-nano.dts
+@@ -99,7 +99,7 @@
+        pinctrl-0 = <&gmac_pins_rgmii_a>;
+        phy = <&phy1>;
+        phy-mode = "rgmii";
+-       status = "okay";
++       status = "disabled";
+ 
+        phy1: ethernet-phy@1 {
+                reg = <1>;
+
+重新编译内核，烧卡，看看板子的网卡还能不能用。
+
+5. 反汇编dtb
+dtc -I dtb -O dts -o nano.dts sun7i-a20-pcduino3-nano.dtb
+观察nano.dts
+把它和原生态的sun7i-a20-pcduino3-nano.dts进行对比
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,12 @@
+config SAFEG
+	bool "Enable SafeG extensions"
+	default y
+	help
+	  Enables SafeG extensions to the Linux kernel.
+
+config SAFEG_DOSCOM
+	bool "Inter-OS communications"
+	depends on SAFEG
+	default y
+	help
+	  Enable SafeG inter-OS communications framework.

@@ -1,0 +1,16 @@
+To set scheduling policy to SCHED_FIFO, enter:
+# chrt -f -p [1..99] {pid}
+
+Set policy to SCHED_FIFO with 50 priority:
+# chrt -f -p 50 1024
+
+To set scheduling policy to SCHED_RR, enter:
+# chrt -r -p [1..99] {pid}
+
+Set policy to SCHED_FIFO with 50 priority for all tasks in process 10576:
+# chrt -f -a -p 50 10576
+
+To set policy scheduling policy to SCHED_OTHER, enter:
+# chrt -o -p 0 {pid}
+# chrt -o -p 0 1024
+

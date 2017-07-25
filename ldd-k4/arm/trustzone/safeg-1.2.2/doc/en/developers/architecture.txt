@@ -1,0 +1,140 @@
+
+                        TOPPERS/SafeG: Architecture
+                        ---------------------------
+
+                             Daniel Sangorrin
+                       (daniel.sangorrin@gmail.com)
+                               26-March-2013
+
+Booting process
+===============
+
+In order to boot SafeG, a bootloader (e.g. u-boot or JTAG debugger) is
+required. The bootloader is expected to initialise various devices, and
+eventually call the SafeG monitor. Essentially, the boot loader should
+provide the following:
+
+  1) Setup and initialise memory and board clocks.
+  2) The MMU and data cache must be off.
+  3) The bootloader should call the SafeG monitor image by jumping directly
+     to its instruction.
+
+SafeG starts execution at 'monitor/start.S:start' after the board's
+bootloader (e.g., u-boot or JTAG) initializes the hardware (e.g., the
+RAM controller), loads all binaries to memory and jumps to SafeG's entry
+point.
+
+Once the SafeG's monitor and its modules are initialized (see 'startup.c')
+the SafeG monitor jumps to the first instruction of the T OS. Then, the T OS
+initializes and starts executing its corresponding tasks.
+
+Scheduling of the NT OS is not included inside the SafeG monitor. Instead,
+the T OS is in charge of triggering switches to the NT OS by using the
+"switch" system call (see 'sytem_calls.txt'). This is typically done from
+a special task named 'btask' executing with background priority.
+
+TrustZone Monitor vector table
+==============================
+
+Execution of the TrustZone monitor always starts here. There are 2
+major ways to enter monitor mode:
+
+1) SMC: the T (Trusted) or NT (Non-Trusted) OS executes an SMC instruction.
+2) FIQ: a T interrupt is raised while the NT OS is executing.
+
+Additionally, depending on the configuration, monitor mode can also be
+entered in the following 3 ways:
+
+3) External aborts: instruction prefetch or data access aborts
+   caused by any of the guest OSs can be trapped by SafeG. To
+   enable trapping external aborts (e.g.: during the porting or
+   testing phase) define TARGET_TRAP_EXTERNAL_ABORTS.
+4) IRQ: it is possible to trap NT interrupts (raised while the NT OS is
+   executing) for tracing the NT interrupt rate from the T OS. To
+   enable it use the tracing interface.
+5) FIQ while T OS executes: it is possible to trap T interrupts while
+   the T OS is executing for tracing the T interrupt rate inside SafeG.
+
+The monitor executes with all interrupts/exceptions masked until it
+returns execution to the T or NT guest OS. When external aborts are
+enabled, the monitor will try to display information related to the
+abort and then panic on an endless loop.
+
+System calls
+============
+
+Guest OSs may call to SafeG's monitor by using an SMC instruction from
+T or NT SVC mode. SafeG offers an static and a dynamic interface for
+these system calls whose format is as follows:
+
+     u32 syscall_invoke(u32 r0, u32 r1, u32 r2, u32 r3)
+
+     - r0 = [IN] call_id
+            [OUT] return value (success 0 or error > 0)
+     - r1 = argument A
+     - r2 = argument B
+     - r3 = argument C
+
+If the syscall (identified through the parameter call_id) does not
+require a TZ world switch, then it only saves registers r12(ip) and r14(lr).
+
+If the syscall does require a TZ world switch, then it must save registers
+r5-r11, r12(ip), r14(lr).
+
+Monitor stack and context switches
+==================================
+
+Safeg's monitor uses the sp_mon register to maintain the stack pointer in
+monitor mode for each core. When entering monitor mode, the sp_mon points
+to the monitor stack if the previous state was NT, or to the T context
+for that core, if the previous state was T. This has several implications
+for the performance and simplicity of the monitor code.
+
+    (-) +-----------------+
+        | Monitor_Stack_n |
+        +-----------------+ <-- [sp] if called from NT
+        |   T_Context_n   |
+    (+) +-----------------+ <-- [sp] if called from T
+
+The monitor should never panic. However ,there are a few cases in which
+it could fail:
+
+    - When T and NT external aborts are set to trap into the monitor
+      (typically this is used to trap external aborts caused by NT
+      during the porting phase).
+
+    - When a condition inconsistent with the execution model of SafeG's
+      monitor is found (e.g., if an IRQ is trapped while in T mode) due to
+      some misconfiguration.
+
+In those cases, a panic notifier will be activated for typically dumping
+an error message including the status of the processor; and then die into
+an endless loop (or try to recover).
+
+The monitor's BSS section contains a per-core structure that contains a space
+for the T and NT contexts and the stack.
+
+    (-) +-----------------+
+        | NT_Context_n    |
+        +-----------------+ <-- nt_context_n = stack_n - MON_NT_CONTEXT_OFFSET
+        | Monitor_Stack_n |
+        +-----------------+ <-- stack_n = t_context_n - MON_T_CONTEXT_OFFSET
+        |   T_Context_n   |
+    (+) +-----------------+ <-- t_context_n = sp_mon_n
+        |      ...        |
+        +-----------------+ <-- stack_1 = sp_mon_1
+        | NT_Context_0    |
+        +-----------------+ <-- nt_context_0 = stack_0 - MON_NT_CONTEXT_OFFSET
+        | Monitor_Stack_0 |
+        +-----------------+ <-- stack_0 = t_context_0 - MON_T_CONTEXT_OFFSET
+        |   T_Context_0   |
+    (+) +-----------------+ <-- t_context_0 = sp_mon_0 = monitor_bss_space
+
+Context switches are performed by saving and restoring ARM registers on this
+memory space. Refer to the macros at 'monitor_asm.inc' for details about
+how the context switch of each world is retrieved and stored.
+
+Depending on the configuration and situation the number of registers to save
+can be optimized. For example, system calls are expected to save part of
+their context before calling the monitor and therefore it is not necessary
+to save all registers.

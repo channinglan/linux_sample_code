@@ -1,0 +1,19 @@
+
+(1)
+gcc -fprofile-arcs -ftest-coverage test.c
+run ./a.out
+gcov test.c
+read:
+test.c.gcov
+
+lcov:
+lcov --capture --directory . --output-file test.info --test-name test
+
+html:
+genhtml test.info --output-directory output --title "a simple test" --show-details --legend
+
+(2)
+gcov preload
+
+gcc -shared -fPIC gcov_out.c -o gcov_out.so
+LD_PRELOAD=./gcov_out.so ./a.out

@@ -1,0 +1,223 @@
+diff --git a/arch/arm/boot/dts/imx6qdl-sabresd.dtsi b/arch/arm/boot/dts/imx6qdl-sabresd.dtsi
+index b5394f3..e314aab
+--- a/arch/arm/boot/dts/imx6qdl-sabresd.dtsi
++++ b/arch/arm/boot/dts/imx6qdl-sabresd.dtsi
+@@ -19,7 +19,7 @@
+ 	};
+ 
+ 	memory {
+-		reg = <0x10000000 0x40000000>;
++		reg = <0x10000000 0x3f000000>;
+ 	};
+ 
+ 	battery: max8903@0 {
+diff --git a/arch/arm/mach-imx/clk-imx6q.c b/arch/arm/mach-imx/clk-imx6q.c
+index cda76a2..7909979
+--- a/arch/arm/mach-imx/clk-imx6q.c
++++ b/arch/arm/mach-imx/clk-imx6q.c
+@@ -615,7 +615,7 @@ static void __init imx6q_clocks_init(struct device_node *ccm_node)
+ 		if (IS_ERR(clk[i]))
+ 			pr_err("i.MX6q clk %d: register failed with %ld\n",
+ 				i, PTR_ERR(clk[i]));
+-
++#if 0
+ 	/* Initialize clock gate status */
+ 	writel_relaxed(1 << CCM_CCGR_OFFSET(11) |
+ 		3 << CCM_CCGR_OFFSET(1) |
+@@ -639,6 +639,7 @@ static void __init imx6q_clocks_init(struct device_node *ccm_node)
+ 		3 << CCM_CCGR_OFFSET(4), base + 0x78);
+ 	writel_relaxed(1 << CCM_CCGR_OFFSET(0), base + 0x7c);
+ 	writel_relaxed(0, base + 0x80);
++#endif
+ 
+ 	/* Make sure PFDs are disabled at boot. */
+ 	reg = readl_relaxed(anatop_base + 0x100);
+diff --git a/arch/arm/mach-imx/headsmp.S b/arch/arm/mach-imx/headsmp.S
+index 2c61117..80e7d81
+--- a/arch/arm/mach-imx/headsmp.S
++++ b/arch/arm/mach-imx/headsmp.S
+@@ -35,7 +35,7 @@ diag_reg_offset:
+ 
+ ENTRY(v7_secondary_startup)
+ 	bl	v7_invalidate_l1
+-	set_diag_reg
++//	set_diag_reg
+ 
+ 	/* Set the CPU status in SCU CPU status register. */
+ 	mrc	p15, 0, r0, c0, c0, 5
+diff --git a/arch/arm/mach-imx/platsmp.c b/arch/arm/mach-imx/platsmp.c
+index 5aba2db..b1710c2
+--- a/arch/arm/mach-imx/platsmp.c
++++ b/arch/arm/mach-imx/platsmp.c
+@@ -76,10 +76,12 @@ static void __init imx_smp_init_cpus(void)
+ 		set_cpu_possible(i, false);
+ 
+ 	/* Set the SCU CPU Power status for each inactive core. */
++#if 0
+ 	for (i = 0; i < NR_CPUS;  i++) {
+ 		if (i != me)
+ 			__raw_writeb(SCU_PM_POWEROFF, imx_scu_base + 0x08 + i);
+ 	}
++#endif
+ }
+ 
+ void imx_smp_prepare(void)
+diff --git a/arch/arm/mach-imx/src.c b/arch/arm/mach-imx/src.c
+index 1021772..8fa8828
+--- a/arch/arm/mach-imx/src.c
++++ b/arch/arm/mach-imx/src.c
+@@ -88,7 +88,7 @@ static struct reset_controller_dev imx_reset_controller = {
+ void imx_enable_cpu(int cpu, bool enable)
+ {
+ 	u32 mask, val;
+-
++#if 0
+ 	cpu = cpu_logical_map(cpu);
+ 	mask = 1 << (BP_SRC_SCR_CORE1_ENABLE + cpu - 1);
+ 	spin_lock(&scr_lock);
+@@ -97,6 +97,7 @@ void imx_enable_cpu(int cpu, bool enable)
+ 	val |= 1 << (BP_SRC_SCR_CORE1_RST + cpu - 1);
+ 	writel_relaxed(val, src_base + SRC_SCR);
+ 	spin_unlock(&scr_lock);
++#endif
+ }
+ 
+ void imx_set_cpu_jump(int cpu, void *jump_addr)
+diff --git a/arch/arm/mach-imx/system.c b/arch/arm/mach-imx/system.c
+index ebc1826..1097762
+--- a/arch/arm/mach-imx/system.c
++++ b/arch/arm/mach-imx/system.c
+@@ -129,6 +129,89 @@ void __init mxc_arch_reset_init_dt(void)
+ }
+ 
+ #ifdef CONFIG_CACHE_L2X0
++/*
++ * System call IDs for static system calls
++ */
++#define SAFEG_SYSCALL_ID__GETID     (0)
++#define SAFEG_SYSCALL_ID__SETPERM   (1)
++#define SAFEG_SYSCALL_ID__SWITCH    (2)
++#define SAFEG_SYSCALL_ID__SIGNAL    (3)
++#define SAFEG_SYSCALL_ID__REGDYN    (4)
++#define SAFEG_SYSCALL_ID__REGNOT    (5)
++
++/*
++ * SMC call to SafeG.
++ */
++
++/*
++ *  Get syscall ID
++ */
++static unsigned int noinline safeg_syscall_getid(const char *name, unsigned int *id)
++{
++	register unsigned int arg_r0 asm("r0") = SAFEG_SYSCALL_ID__GETID;
++	register unsigned int arg_r1 asm("r1") = (unsigned int)name;
++	register unsigned int arg_r2 asm("r2") = (unsigned int)id;
++	register unsigned int arg_r3 asm("r3") = 0;
++
++	/* Perform a Security Monitor Call (SMC), saving r12(ip) and r14(lr) */
++	__asm__ volatile (".arch_extension sec\n\t"                               
++					  "dsb\n\t"                                               
++					  "smc #0\n\t"                                            
++					  : "=r" (arg_r0)                                         
++					  : "0" (arg_r0), "r" (arg_r1), "r" (arg_r2), "r" (arg_r3)
++					  : "ip", "lr", "memory", "cc");
++
++	return arg_r0;
++}
++
++/*
++ * INVOKE: invokes a system call.
++ */
++static unsigned int  noinline safeg_syscall_invoke(unsigned int id,
++										 unsigned int a,
++										 unsigned int b,
++										 unsigned int c)
++{
++	register unsigned int arg_r0 asm("r0") = id;
++	register unsigned int arg_r1 asm("r1") = a;
++	register unsigned int arg_r2 asm("r2") = b;
++	register unsigned int arg_r3 asm("r3") = c;
++
++	/* Perform a Security Monitor Call (SMC), saving r4-r11, r12(ip), r14(lr) */
++	/* r11(fp) is not clobber list, however it will be saved */
++	__asm__ volatile (".arch_extension sec\n\t"
++					  "dsb\n\t"
++					  "smc #0\n\t"
++					  : "=r" (arg_r0)
++					  : "0" (arg_r0), "r" (arg_r1), "r" (arg_r2), "r" (arg_r3)
++					  : "r4", "r5", "r6", "r7", "r8", "r9", "r10", "ip", "lr", "memory", "cc");
++
++	return arg_r0;
++}
++
++static volatile unsigned int l2debug_set_id = 0;
++
++static void safeg_pl310_set_debug(unsigned long val) {
++	safeg_syscall_invoke(l2debug_set_id, val, 0, 0);
++}
++
++static void safeg_l2x0_init(void) {
++	char l2init_id_syscall_name[] = "l2init";
++	char l2debug_set_id_syscall_name[] = "l2debug";
++	unsigned int l2init_id = 0;
++
++	/* get l2init ID */
++	safeg_syscall_getid((char *)(virt_to_phys((void *)l2init_id_syscall_name)),
++						(unsigned int*)(virt_to_phys((void *)&l2init_id)));
++
++	/* call l2ini ID */
++	safeg_syscall_invoke(l2init_id, 0, 0, 0);
++
++	/* get l2debug_set ID */
++	safeg_syscall_getid((char *)(virt_to_phys((void *)l2debug_set_id_syscall_name)),
++						(unsigned int*)(virt_to_phys((void *)&l2debug_set_id)));
++}
++
+ void __init imx_init_l2cache(void)
+ {
+ 	void __iomem *l2x0_base;
+@@ -144,7 +227,7 @@ void __init imx_init_l2cache(void)
+ 		of_node_put(np);
+ 		goto out;
+ 	}
+-
++#if 0
+ 	/* Configure the L2 PREFETCH and POWER registers */
+ 	val = readl_relaxed(l2x0_base + L2X0_PREFETCH_CTRL);
+ 	val |= 0x30000000;
+@@ -162,11 +245,12 @@ void __init imx_init_l2cache(void)
+ 	writel_relaxed(val, l2x0_base + L2X0_PREFETCH_CTRL);
+ 	val = L2X0_DYNAMIC_CLK_GATING_EN | L2X0_STNDBY_MODE_EN;
+ 	writel_relaxed(val, l2x0_base + L2X0_POWER_CTRL);
+-
+ 	iounmap(l2x0_base);
+ 	of_node_put(np);
+-
++#endif
+ out:
++	safeg_l2x0_init();
+ 	l2x0_of_init(0, ~0UL);
++	outer_cache.set_debug = safeg_pl310_set_debug;
+ }
+ #endif
+diff --git a/arch/arm/mm/proc-v7.S b/arch/arm/mm/proc-v7.S
+index 128398c..e013240
+--- a/arch/arm/mm/proc-v7.S
++++ b/arch/arm/mm/proc-v7.S
+@@ -297,6 +297,7 @@ __v7_setup:
+ 2:	ldr	r10, =0x00000c09		@ Cortex-A9 primary part number
+ 	teq	r0, r10
+ 	bne	3f
++#if 0
+ #ifdef CONFIG_ARM_ERRATA_742230
+ 	cmp	r6, #0x22			@ only present up to r2p2
+ 	mrcle	p15, 0, r10, c15, c0, 1		@ read diagnostic register
+@@ -337,6 +338,7 @@ __v7_setup:
+ 	orrlt	r10, r10, #1 << 21		@ set bit #21
+ 	mcrlt	p15, 0, r10, c15, c0, 1		@ write diagnostic register
+ #endif
++#endif
+ 
+ 3:	mov	r10, #0
+ 	mcr	p15, 0, r10, c7, c5, 0		@ I+BTB cache invalidate

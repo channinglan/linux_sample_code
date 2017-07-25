@@ -1,0 +1,20 @@
+
+                        TOPPERS/SafeG: Debugging
+                        ------------------------
+
+                             Daniel Sangorrin
+                       (daniel.sangorrin@gmail.com)
+                               26-March-2013
+
+Debugging TOPPERS/SafeG is usually done by one of these methods:
+
+ 1) Serial output: the SafeG monitor can output debug messages during
+    execution (see monitor/common/debug.h).
+
+ 2) JTAG: this is usually done by using an external device (ICE) connected
+    to the target board, and allows step-by-step execution. Debugging
+    scripts for each target board are included in the 'patches/target'
+    directory.
+
+ 3) QEMU GDB: QEMU targets allow debugging the code of SafeG by connecting
+    a gdb client to QEMU internal gdb server.

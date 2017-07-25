@@ -1,0 +1,20 @@
+1. lttng list --kernel
+Before tracing, you need to create a session:
+
+2. sudo lttng create my-session
+Tip:You can avoid using sudo in the previous and following commands if your user is a member of the tracing group.
+my-session is the tracing session name and could be anything you like. auto will be used if omitted.
+Let's now enable some events for this session:
+sudo lttng enable-event --kernel sched_switch,sched_process_fork
+or you might want to simply enable all available kernel events (beware that trace files will grow rapidly when doing this):
+
+3. sudo lttng enable-event --kernel --all
+
+Start tracing:
+4. sudo lttng start
+By default, traces are saved in ~/lttng-traces/name-date-time, where name is the session name.
+
+
+5. When you're done tracing:
+sudo lttng stop
+sudo lttng destroy

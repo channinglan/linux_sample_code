@@ -1,0 +1,29 @@
+
+                        TOPPERS/SafeG: Multicore
+                        ------------------------
+
+                             Daniel Sangorrin
+                       (daniel.sangorrin@gmail.com)
+                               26-March-2013
+
+When TOPPERS/SafeG is executed on a multicore processor, the monitor code
+is shared by all cores.
+
+During the SafeG's monitor initialization a set of barriers are used to
+synchronize with the so-called primary core. Afterwards, the execution of
+the SafeG monitor is independent of the core.
+
+The sp_mon register at each core contains the pointer to the stack or T
+context switch of that core.
+
+System calls and notifiers are always executed in the same core where they
+are triggered.
+
+SafeG monitor does not use any locks. A consequence is that registered
+notifiers and dynamic system calls cannot be unregistered.
+
+A configuration where some cores are set as T and other cores are set as NT
+is possible. However, that could be achieved with a simpler code than SafeG.
+
+
+

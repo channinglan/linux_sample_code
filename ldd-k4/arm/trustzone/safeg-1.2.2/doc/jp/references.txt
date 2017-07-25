@@ -1,0 +1,37 @@
+		TOPPERS/SafeG
+		TOPPERS/SafeG 参考文献
+
+		対応バージョン: Release 1.2.2
+		最終更新: 2015年09月17日
+
+日本語
+
+"SafeG-MP：マルチコア対応の組込みシステム向け仮想化環境", 太田貴也, 大
+橋 孝輔, D. Sangorrin, 本田晋也, 高田広章, 堀田孝一, 大山田光夫, 電子
+情報通信学会論文誌 D, Vol.J96-D,No.10,pp.2163-2181,Oct. 2013.
+
+"組込みマルチコア向け仮想化環境における性能低下抑止手法"，太田貴也，Daniel
+Sangorrin，本田晋也，高田広章，情報処理学会 第123回OS・第27回EMB合同研究発表会，
+東京，Dec 2012．
+
+"組込み向け仮想化環境におけるマルチコア利用時の性能低下抑止手法"，太田貴也，
+Daniel Sangorrin，本田晋也，高田広章，第14回 組込みシステム技術に関する
+サマーワークショップ（SWEST14）ポスター，予稿集，下呂市，Aug 2012.
+
+"組込み向け高信頼デュアルOSモニタとそのマルチコア拡張"，太田貴也，Daniel Sangorrin，
+本田晋也，高田広章，第13回 組込みシステム技術に関するサマーワークショップ（SWEST13）
+ポスター，予稿集, 下呂市, Sep 2011.
+
+"組込み向け高信頼デュアルOSモニタのマルチコアアーキテクチャへの適用"，
+太田貴也，Daniel Sangorrin，一場利幸，本田晋也，高田広章，情報処理学会
+第117回OS研究会，Apr 2011.
+
+"セキュリティ支援ハードウェアによるハイブリッドOSシステムの高信頼化", 中嶋 健一郎,
+本田 晋也, 手嶋 茂晴, 高田 広章. The IEICE Transactions on Information Systems,
+93(2):7585, Feb 2010.
+
+英語
+
+"Advanced integration techniques for highly reliable dual-os embedded
+systems", Doctoral thesis, Daniel Sangorrin, Jul 2012.
+http://ir.nul.nagoya-u.ac.jp/jspui/bitstream/2237/16907/1/k9888.pdf

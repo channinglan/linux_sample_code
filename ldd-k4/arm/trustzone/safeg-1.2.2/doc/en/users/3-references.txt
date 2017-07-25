@@ -1,0 +1,11 @@
+
+                    TOPPERS/SafeG references in English
+                    -----------------------------------
+
+                             Daniel Sangorrin
+                       (daniel.sangorrin@gmail.com)
+                               6-Feb-2013
+
+"Advanced integration techniques for highly reliable dual-os embedded
+systems", Doctoral thesis, Daniel Sangorrin, Jul 2012.
+http://ir.nul.nagoya-u.ac.jp/jspui/bitstream/2237/16907/1/k9888.pdf

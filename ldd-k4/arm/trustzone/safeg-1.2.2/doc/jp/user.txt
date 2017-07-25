@@ -1,0 +1,549 @@
+
+		TOPPERS/SafeG
+		ユーザーズマニュアル
+
+		対応バージョン: Release 1.2.2
+		最終更新: 2015年10月12日
+
+このドキュメントは，TOPPERS/SafeGを使用するために必要な事項を説明する
+ものである．
+
+----------------------------------------------------------------------
+  TOPPERS/SafeG Dual-OS monitor
+      Toyohashi Open Platform for Embedded Real-Time Systems/
+      Safety Gate Dual-OS monitor
+
+ Copyright (C) 2010-2015 by Embedded and Real-Time Systems Laboratory
+             Graduate School of Information Science, Nagoya Univ., JAPAN
+ 
+ 上記著作権者は，以下の(1)～(4)の条件を満たす場合に限り，本ソフトウェ
+ ア（本ソフトウェアを改変したものを含む．以下同じ）を使用・複製・改
+ 変・再配布（以下，利用と呼ぶ）することを無償で許諾する．
+ (1) 本ソフトウェアをソースコードの形で利用する場合には，上記の著作
+     権表示，この利用条件および下記の無保証規定が，そのままの形でソー
+     スコード中に含まれていること．
+ (2) 本ソフトウェアを，ライブラリ形式など，他のソフトウェア開発に使
+     用できる形で再配布する場合には，再配布に伴うドキュメント（利用
+     者マニュアルなど）に，上記の著作権表示，この利用条件および下記
+     の無保証規定を掲載すること．
+ (3) 本ソフトウェアを，機器に組み込むなど，他のソフトウェア開発に使
+     用できない形で再配布する場合には，次のいずれかの条件を満たすこ
+     と．
+   (a) 再配布に伴うドキュメント（利用者マニュアルなど）に，上記の著
+       作権表示，この利用条件および下記の無保証規定を掲載すること．
+   (b) 再配布の形態を，別に定める方法によって，TOPPERSプロジェクトに
+       報告すること．
+ (4) 本ソフトウェアの利用により直接的または間接的に生じるいかなる損
+     害からも，上記著作権者およびTOPPERSプロジェクトを免責すること．
+     また，本ソフトウェアのユーザまたはエンドユーザからのいかなる理
+     由に基づく請求からも，上記著作権者およびTOPPERSプロジェクトを
+     免責すること．
+ 
+ 本ソフトウェアは，無保証で提供されているものである．上記著作権者お
+ よびTOPPERSプロジェクトは，本ソフトウェアに関して，特定の使用目的
+ に対する適合性も含めて，いかなる保証も行わない．また，本ソフトウェ
+ アの利用により直接的または間接的に生じたいかなる損害に関しても，そ
+ の責任を負わない．
+ 
+ @(#) $Id: user.txt 822 2015-10-12 13:50:30Z ertl-honda $
+----------------------------------------------------------------------
+
+○目次
+
+1. TOPPERS/SafeGの概要
+	1.1 TOPPERS/SafeGとは
+	1.2 サポートターゲット
+	1.3 既知の問題
+	 TOPPERS/SafeGのビルド
+2. Monitorのシステムコール
+2.1 システムコールの使用方法
+2.2 システムコール呼び出し許可・禁止
+2.3 ワールド切り替え
+2.4 Notifiers
+2.5 Monitorリードライト
+2.6 NTリスタート
+2.7 ダイナミックシステムコール
+4. カスタマイズ
+4.1 Monitorのリソース初期化・チェック関数
+4.2 COMが使用する共有メモリの設定
+5．参考情報
+	6.1 利用条件と利用報告
+	6.2 保証・適用性・サポート
+	6.3 バグレポート
+	6.4 ウェブサイト
+	6.5 TOPPERSユーザーズメーリングリスト
+	6.6 TOPPERSプロジェクトのメンバ向けのサービス
+	6.7 TOPPERSプロジェクトへの参加
+7 リファレンス
+	7.1 システムコール一覧
+	7.2 バージョン履歴
+
+
+1. TOPPERS/SafeGの概要
+
+1.1 TOPPERS/SafeGとは
+
+TOPPERS/SafeGは，ARMプロセッサのTrustZoneの機能を用いて，プロセッサを
+TrustとNon-Trustの2種類の仮想的なプロセッサとして扱い，それぞれの仮想
+プロセッサで独立したOSを動作させるソフトウェアである．標準では，Trust
+側でASPカーネルないしFMPカーネルを動作させ，Non-Trust側でLinuxを動作さ
+せる．
+
+SafeGは，Monitorと呼ばれるTrustとNon-Trustを切り替える機能と，COMと呼
+ぶOS間の通信機能により構成されている．
+
+本ドキュメントは，Monitorについて解説する．COMの使用方法や詳細について
+ついては，以下のファイルを参照のこと．
+
+./doc/jp/com_user.txt
+
+1.2 サポートターゲット
+
+本バージョンでサポートしているターゲットは次の通りである．()内はコア，
+[]内は評価ボード
+
+・Altera社 Altera SoC(Cortex-A9MPCore) [Altera社Cyclone V SoC 開発キット]
+
+TOPPERS/SafeGは， TrustZoneをサポートしている以下のARMコアで動作する．
+
+・ARM1176
+・ARM11MPCore
+・Cortex-A9
+・Cortex-A9MPCore
+
+以下のコアについては恐らく動作すると考えられるが，動作した実績はない．
+
+・Cortex-A7
+・Cortex-A15
+
+SafeGを動作させるためには，コアがTrustZoneに対応していることに加えて，
+割込みコントローラがTrustZoneに対応していることが必要である．具体的に
+は，割込み優先度をSecureとNon-Secureで個別に管理できる必要がある．
+
+1.4 ビルド
+
+SafeGのビルド方法やTrust/Non-TrustのOSのビルド方法については以下にある
+各ターゲットのマニュアルを参照のこと．
+
+./doc/jp/target
+./doc/en/target
+
+1.3 既知の問題
+
+
+2. Monitorシステムコール
+
+Monitorが各OSに提供する機能をシステムコールと呼ぶ．システムサービスは
+スタティックシステムコールとダイナミックシステムコールに分類できる．
+
+スタティックシステムコールは，Monitor内に組み込まれているシステムコー
+ルであり，ダイナミックシステムコールはTrust側のOSにより登録可能なシス
+テムコールである．
+
+・スタティックシステムコール
+ ・システムコール呼び出し許可・禁止
+ ・ワールド切り替え
+ ・シグナル送信
+ ・Notifiers
+ ・Monitorリードライト
+ ・NTリスタート
+ 
+・ダイナミックシステムコール
+
+各システムコールはIDにより識別される．
+
+2.1 システムコールの使用方法
+
+システムコールを使用するには，
+
+./app/lib/libsafeg
+
+にある，libsafeg.h をインクルードし，Monitorのビルドにより生成される
+libsafeg.a をリンクするか，libsafeg.c を直接コンパイルしてリンクすれば
+よい．
+
+アドレスを引数に持つシステムコールの場合は，"物理アドレス"を指定する必
+要がある．アドレスは，ターゲット依存部の target_is_valid_memory() によ
+りチェックされる．
+
+2.2 システムコール呼び出し許可・禁止
+
+システムコールの呼び出しの禁止・許可を設定する．初期状態ではTrustから
+のみ呼び出し可能である．is_xxx に'1'を設定するとその状態
+
+ uint32_t safeg_syscall_setperm(uint32_t id,
+                                uint32_t is_t_callable,
+                                uint32_t is_nt_callable);
+                                      
+    id             : システムコールID
+    is_t_callable  : Trustからの呼び出し可否
+    is_nt_callable : Non-Trustからの呼び出し可否
+  
+システムコールIDは，スタティックシステムコールに関しては，次の値が各シ
+ステムコールに対応する．ダイナミックシステムコールは，動的に割り当てら
+れたIDを使用する．
+
+ 0:safeg_syscall_getid()
+ 1:safeg_syscall_setperm()
+ 2:safeg_syscall_switch()
+ 3:safeg_syscall_signal()
+ 4:safeg_syscall_regdyn()
+ 5:safeg_syscall_regnot()
+ 6:safeg_syscall_readl()
+ 7:safeg_syscall_writel()
+ 8:safeg_syscall_setntpc()
+                                       
+2.3 ワールド切り替え
+
+Trust で呼び出すと，Non-Trust へ，Non-Trust で呼び出すと True へ切り替
+える．
+
+ uint32_t safeg_syscall_switch(void);
+ 
+2.4 シグナル送信
+
+Trust で呼び出すと，Non-Trust へ，Non-Trust で呼び出すと True へ割込み
+を発生させる．
+
+ uint32_t safeg_syscall_signal(void);
+ 
+具体的に発生させる割込み番号はターゲット依存である．また，割込みを発生
+させる処理はターゲット依存部の target_signal() に記述する．
+
+2.4 Notifiers
+
+Monitorの各実行パスでコールバック関数を呼び出す機能．実行パスは次の4種
+類があり，それぞれ次のIDで識別する．
+
+#define NOTIFIER_CHAIN_ID_FIQ    (0)  /* FIQ発生 */
+#define NOTIFIER_CHAIN_ID_SMC    (1)  /* SMC呼び出し */
+#define NOTIFIER_CHAIN_ID_IRQ    (2)  /* IRQ発生 */
+#define NOTIFIER_CHAIN_ID_PANIC  (3)  /* PANIC時 */
+
+また，それぞれの実行パスはさらに詳細のイベントに分けられる．
+
+FIQ発生
+#define     NOTIFIER_EVENT_ID_FIQ_ENTER             (0) /* FIQ発生 */
+#define     NOTIFIER_EVENT_ID_FIQ_T_EXIT            (1) /* FIQがTrustで発生 */
+#define     NOTIFIER_EVENT_ID_FIQ_NT_EXIT           (2) /* FIQがNon-Trustで発生 */
+
+SMC呼び出し
+#define     NOTIFIER_EVENT_ID_SMC_ENTER             (0) /* SMC発生 */
+#define     NOTIFIER_EVENT_ID_SMC_DONT_SWITCH_EXIT  (1) /* SMC発生後ワールドの切り替えなし */
+#define     NOTIFIER_EVENT_ID_SMC_SWITCH_TO_NT_EXIT (2) /* SMC発生後Non-Trustに切り替え */
+#define     NOTIFIER_EVENT_ID_SMC_SWITCH_TO_T_EXIT  (3) /* SMC発生後Trustに切り替え */
+
+IRQ発生
+#define     NOTIFIER_EVENT_ID_IRQ_ENTER             (0) /* IRQ発生 */
+#define     NOTIFIER_EVENT_ID_IRQ_NT_EXIT           (1) /* IRQがNon-Trustで発生 */
+
+PANIC時
+#define     NOTIFIER_EVENT_ID_PANIC_IRQ_IN_T        (0) /* TrustでIRQ発生 */
+#define     NOTIFIER_EVENT_ID_PANIC_PREFETCH        (2) /* プリフェッチエラー発生 */
+#define     NOTIFIER_EVENT_ID_PANIC_DATA            (3) /* データアボート発生 */
+
+コールバック関数は次のフォーマットで用意する．
+
+ uint32_t callback(uint32_t core_id, 
+                   uint32_t ns, 
+                   uint32_t event_id,     
+                   void *notifier_params,
+                   void *user_params);
+  
+
+    core_id          : コアID
+    ns               : 0:Trustからの呼び出し，0:Trustからの呼び出
+    event_id         : イベントID
+    notifiler_params : Notifilerパラメータ（未使用）
+    user_params      : ユーザーパラメータ
+
+コールバック関数は，以下の戻り値を使用可能である．
+
+#define NOTIFIER_CONTINUE 0  /* Notifierを有効のまま */
+#define NOTIFIER_STOP     1  /* Notifierを無効にする */
+
+コールバック関数の登録解除は次のシステムコールにより行う．本システムコ
+ールはTrustにのみ呼び出し可能である．
+
+ uint32_t safeg_syscall_regnot(const struct safeg_notifier *notifier,
+                               uint32_t *id);
+                                         
+ notifier : 登録情報
+ id       : ID
+ 
+登録情報は次の構造体で定義する．
+
+    struct safeg_notifier {
+    uint32_t chain_id;
+    uint32_t (*function)(uint32_t core_id,
+                         uint32_t ns,
+                         uint32_t event_id,
+                         void     *notifier_params,
+                         void     *user_params);
+    void  *user_params;
+    };                                                                                                   
+                   
+2.5 Monitorリードライト
+
+Non-Trustからアクセスできないメモリやレジスタへのアクセスを実現する．
+指定されたアドレスに対して読み込み書き込み可能かは，ターゲット依存部の
+target_is_valid_readl_address()/target_is_valid_writel_address() によ
+りチェックする．
+
+ uint32_t safeg_syscall_readl(uint32_t address, uint32_t *rdata_ref);
+    
+    address   : リードアドレス
+    rdata_ref : リード値の格納先
+     
+ uint32_t safeg_syscall_writel(uint32_t address, uint32_t wdata);
+    
+    address   : ライトアドレス
+    wdata     : ライトデータ
+ 
+2.6 NTリスタート
+
+Non-Trustをリスタートするため，Non-Trust側のPCとCPSRを初期値に設定する．
+また，Non-Trust側のMMUとキャッシュを無効にする．
+
+ uint32_t safeg_syscall_restarnt(void);
+ 
+Non-Trust側のリスタートを実現するためには，Trust側で本システムコールを
+呼び出すと共に，L2キャッシュの無効化やデバイスの初期化等を適切に行う必
+要がある．
+ 
+2.7 NT OSのPCの設定
+
+NT OSのPCの値を設定する．
+
+ uint32_t safeg_syscall_setntpc(uint32_t pc);
+  
+   pc : NT OSのPC
+ 
+2.8 ダイナミックシステムコール
+
+Trustから任意の関数を登録し，Non-Trustから呼び出す機能．
+
+ダイナミックシステムコールを登録するシステムコールは次の通り．
+
+ uint32_t safeg_syscall_regdyn(const struct safeg_syscall *call,
+                               uint32_t *id);
+                               
+     call : ダイナミックシステムコール登録用構造体
+     id   : 割り当てられたidを戻す．
+                                   
+ダイナミックシステムコール登録用構造体は次の通りである．
+
+struct safeg_syscall {
+    uint32_t is_t_callable;  /* Trustから，1:呼び出し可能，0:呼び出し不可能 */
+    uint32_t is_nt_callable; /* Non-Trustから，1:呼び出し可能，0:呼び出し不可能 */
+    uint8_t  name[8];        /* ダイナミックシステムコール名 */
+    uint32_t (*function)(uint32_t core_id, uint32_t ns,
+                         uint32_t a, uint32_t b, uint32_t c);
+};
+
+ダイナミックシステムコールは引数を4個指定することが可能である．
+
+システムコールには，最大8文字の名前を付けることが可能であり，Non-Trust
+側からは，名前によりIDを取得するシステムコールでIDを取得してから，IDを
+指定してシステムコールを呼び出す．
+
+ uint32_t safeg_syscall_getid(const char *name, uint32_t *id);
+ 
+   name : ダイナミックシステムコールの名前
+   id   : IDの格納先
+
+ uint32_t safeg_syscall_invoke(uint32_t id,
+                               uint32_t a,
+                               uint32_t b,
+                               uint32_t c);
+                               
+   id : ダイナミックシステムコールのID
+   a  : 第1引数
+   b  : 第2引数                                
+   c  : 第3引数                                   
+
+
+4. カスタマイズ
+
+4.1 Monitorのリソース初期化・チェック関数
+
+SafeGの主目的の一つに，Trustで動作させるソフトウェア（OS等）を
+Non-Trustから保護する必要がある．ディフォルトのMonitorは最低限の保護ま
+たは保護は未実装であるため，必要に応じてユーザーが設定する必要がある．
+
+設定は，Monitorのターゲット依存部（./monitor/target/以下）のtarget.c 
+の次の関数により行うため，これらの関数の内容をカスタマイズすればよい．
+
+・void target_trustzone_init(void)
+  ターゲット依存のTrustZone関連の初期化．Monitor起動時に呼び出される．
+  保護したいデバイスやメモリの設定を行う．
+  
+・uint32_t target_is_valid_memory(uint32_t UNUSED(ns),
+                                  uint32_t UNUSED(address),
+                                  uint32_t UNUSED(bytes))
+   アドレスを引数に渡すシステムコールの引数への読み書きのチェック関数
+   として呼び出される．falseを返すと操作を禁止としてエラーを返す．
+   
+・uint32_t target_is_valid_readl_address(uint32_t UNUSED(core_id),
+                                       uint32_t UNUSED(ns),
+                                       uint32_t UNUSED(address))
+   safeg_syscall_readl()の実行の可否を判断するために呼び出される．
+   falseを返すと操作を禁止としてエラーを返す．
+   
+・uint32_t target_is_valid_writel_address(uint32_t UNUSED(core_id),
+                                        uint32_t UNUSED(ns),
+                                        uint32_t UNUSED(address))                                    
+   safeg_syscall_writel()の実行の可否を判断するために呼び出される．
+   falseを返すと操作を禁止としてエラーを返す．
+
+4.2 COMが使用する共有メモリの設定
+
+COMが使用する共有メモリ領域はTrustとNon-Trustの両方でアクセス可能なよ
+うに適切にハードウェア（メモリコントローラやMMU）を設定する必要がある．
+
+MonitorやCOMでは共有メモリ用のハードウェア設定は行わないため，Trust側
+のOSで適切に設定する必要がある．
+
+5 参考情報
+
+5.1 利用条件と利用報告
+
+SafeGの利用条件は，各ファイルの先頭に表示されている．著作権は，各ファ
+イルの先頭に表示されている著作権者が保有している．
+
+利用条件の(3)の(b)において，利用の形態をTOPPERSプロジェクトに報告する
+方法としては，SafeGを利用した製品の名称と応用分野，製品化した会社名と
+業種等の情報を，以下のURLのページから報告するものとする．
+
+	http://www.toppers.jp/report.html
+
+またその際に，SafeGを使用してのコメントやご意見もいただけると幸いであ
+る．
+
+5.2 保証・適用性・サポート
+
+SafeGは無保証で提供されているものである．開発者およびTOPPERSプロジェク
+トは，SafeGに関して，特定の使用目的に対する適合性も含めて，いかなる保
+証も行わない．また，SafeGの利用により直接的または間接的に生じたいかな
+る損害に関しても，その責任を負わない．
+
+開発者およびTOPPERSプロジェクトは，SafeGに関するサポートの約束はしてい
+ない．SafeGに関して質問がある場合は，後述のTOPPERSユーザーズメーリング
+リストを利用していただけると幸いである．確実なサポートが必要な場合には，
+有償でサポートサービスを提供している会社に相談されたい．
+
+5.3 バグレポート
+
+SafeGにバグや問題点を発見された場合には，後述のTOPPERSユーザーズメーリ
+ングリストに報告して欲しい．
+
+メーリングリストにバグや問題点などを報告する場合には，必要に応じて次の
+情報を知らせて欲しい．
+
+	使用しているカーネルに関する情報
+		・ターゲット非依存部のバージョン
+		・使用しているターゲット依存部とそのバージョン
+		・TOPPERSプロジェクトからのリリースに対する改造箇所（あれば）
+
+	ターゲットシステムに関する情報
+		・ターゲットプロセッサの種類
+		・ターゲットボード等の種類
+
+	ホストに関する情報
+		・OSのバージョン（サービスパックの適用状況も）
+		・コンパイラなどの開発環境のバージョン（Cygwinのバージョンも）
+
+5.4 ウェブサイト
+
+TOPPERSプロジェクトのウェブサイトは，以下のURLにある．
+
+	http://www.toppers.jp/
+
+TOPPERSプロジェクトやSafeGに関する最新情報は，このウェブサイトから得る
+ことができる．また，SafeGの最新版は，このウェブサイトからダウンロード
+することができる．
+
+5.5 TOPPERSユーザーズメーリングリスト
+
+SafeGを含むTOPPERSプロジェクトの開発成果物のユーザに対する情報提供およ
+びユーザ相互間の情報交換を容易にするために，TOPPERSユーザーズメーリン
+グリスト（users@toppers.jp）を用意している．
+
+このメーリングリストには，誰でも自由に登録し，メールを送付することがで
+きる（登録者以外はメールを送付できない）．また，送付されたメールは，誰
+でも自由にウェブサイトで読むことができる．
+
+メーリングリストへの登録方法については，以下のURLのページに説明がある．
+
+	http://www.toppers.jp/community.html
+
+5.6 TOPPERSプロジェクトのメンバ向けのサービス
+
+TOPPERSプロジェクトのメンバに対しては，上記に加えて，SafeGに関連
+して次のサービスを用意している．
+
+(1) TOPPERS開発者メーリングリスト
+
+TOPPERSプロジェクトのメンバは，SafeGに関する質問，バグや問題点な
+どの報告に，TOPPERS開発者メーリングリスト（dev@toppers.jp）を利用するこ
+とができる．
+
+(2) SafeGの開発支援サイト
+
+SafeGの開発支援のためのTRAC（バグトラッキングシステム）が，以下のURLに
+ある（TRACへのアクセスには，会員パスワードが必要である）．
+
+	http://dev.toppers.jp/proj/safeg/
+
+TOPPERSプロジェクトのメンバは，このサイトから，ウェブインタフェースお
+よびsubversionサーバにより，SafeGの開発中のバージョンを得ることができ
+る．また，バグトラッキングデータベースにアクセスすることができ，過去の
+バグ履歴へのアクセスや，バグの登録をすることができる．
+
+5.7 TOPPERSプロジェクトへの参加
+
+TOPPERSプロジェクトでは，何からの形でプロジェクトに貢献していただける
+方，プロジェクトで開発したソフトウェアをお使いの方，プロジェクトに興味
+をお持ちの方の参加を求めている．TOPPERSプロジェクトへの参加方法につい
+ては，以下のページに説明がある．
+
+	http://www.toppers.jp/joinus.html
+
+7 リファレンス
+
+7.1 システムコール一覧
+
+ uint32_t safeg_syscall_setperm(uint32_t id, uint32_t is_t_callable, uint32_t is_nt_callable);
+  システムコール呼び出し許可・禁止．
+ uint32_t safeg_syscall_switch(void);
+  ワールド切り替え．  
+ uint32_t safeg_syscall_signal(void);
+  シグナル送信
+ uint32_t safeg_syscall_regnot(const struct safeg_notifier *notifier, uint32_t *id);    
+  コールバック関数登録
+ uint32_t safeg_syscall_readl(uint32_t address, uint32_t *rdata_ref);
+  Monitorリード
+ uint32_t safeg_syscall_writel(uint32_t address, uint32_t wdata);
+  Monitorライト
+ uint32_t safeg_syscall_setntpc(uint32_t pc);  
+  NT OSのPCの設定
+ uint32_t safeg_syscall_regdyn(const struct safeg_syscall *call, uint32_t *id);
+  ダイナミックシステムコール登録
+ uint32_t safeg_syscall_getid(const char *name, uint32_t *id);
+ ダイナミックシステムコールID取得
+ uint32_t safeg_syscall_invoke(uint32_t id, uint32_t a, uint32_t b, uint32_t c); 
+ ダイナミックシステムコール呼び出し
+                                   
+7.2 バージョン履歴
+
+	2015年10月12日	Release	1.2.2		1.2.1で変更した不具合の修正等
+	2015年10月01日	Release	1.2.1		システムコールの追加，不足ファイルの追加
+	2015年09月17日	Release	1.2.0		システムコールの追加，不具合の修正
+	2015年08月12日	Release	1.1.0		FPUのサポート，COMのマルチプロセス通信対応
+	2013年11月19日	Release	1.0.0		ソフトウェア構成を大幅に変更
+	2013年03月21日	Release	0.5.0
+	2012年07月13日	Release	0.4.0
+	2011年12月22日	Release	0.3.0
+	2011年06月08日	Release	0.2.0		最初のリリース
+
+以上．

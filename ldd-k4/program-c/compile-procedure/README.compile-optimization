@@ -1,0 +1,87 @@
+I) Dead code elimination
+II) Sub code elimination
+III) Loop optimization
+I) Dead code elimination:
+
+For ex:
+
+{
+    int a = 10;
+    if ( a > 5 ) {
+        /*
+        ...
+        */
+    } else {
+       /*
+       ...
+       */
+    }
+}
+Here, the compiler knows the value of a at compile time, therefore it also knows that the if condition is true for ever. Hence it eliminates the else part in the code.
+
+II) Sub code elimination:
+
+For ex:
+
+{
+    int a, b, c;
+    int x, y;
+
+    /*
+    ...
+    */
+
+    x = a + b;
+    y = a + b + c;
+
+    /*
+    ...
+    */
+}
+can be optimized as follows:
+
+{
+    int a, b, c;
+    int x, y;
+
+    /*
+     ...
+    */
+
+    x = a + b;
+    y = x + c;      // a + b is replaced as x:
+
+    /*
+     ...
+    */
+}
+III) Loop optimization:
+
+For ex:
+
+{
+    int a;
+    for (i = 0; i < 1000; i++ ) {
+
+    /*
+     ...
+    */
+
+    a = 10;
+
+    /*
+     ...
+    */
+    }
+}
+In the above code, if 'a' is local and not used in the loop then it can be optimized as follows:
+
+{
+    int a;
+    a = 10;
+    for (i = 0; i < 1000; i++ ) {
+        /*
+        ...
+        */
+    }
+}

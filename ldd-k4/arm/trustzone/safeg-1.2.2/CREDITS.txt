@@ -1,0 +1,33 @@
+
+This is a partial list of people that have contributed to the TOPPERS/SafeG
+dual-OS monitor source code. It is sorted by name, and the meaning of each
+field is: name (N), email (E), description (D) and country (C).
+
+N: Shinya Honda (本田 晋也)
+E: honda@ertl.jp
+D: Original SafeG architect, project leader, portings (SoCFPGA),
+D: research advisor.
+C: Japan
+
+N: Daniel Sangorrin
+E: daniel.sangorrin@gmail.com
+D: Integrated scheduling, COM, device sharing, static and dynamic syscalls,
+D: notifiers framework, portings (QEMU, S3C6410, I.MX53), bare metal support,
+D: English documentation, maintainer (2009~2013), rewrite of SafeG (v1.0).
+C: Spain
+
+N: Hiroaki Takada (高田 広章)
+E: hiro@ertl.jp
+D: Research advisor.
+C: Japan
+
+N: Marek Kubica
+E: marek@xivilization.net
+D: Monitoring facility for SafeG.
+C: Poland/Germany
+
+N: Takaya Ohta (太田 貴也)
+E: takaya.ohta@gmail.com
+D: Multicore support, lock-holder preemption, load balance, Japanese
+D: documentation, portings (KZM-CA9-01, Marzen).
+C: Japan

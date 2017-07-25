@@ -1,0 +1,81 @@
+#sudo swapoff -a
+#sudo sh -c 'echo 1 > /proc/sys/vm/overcommit_memory'
+
+1. page reclaim
+启动firefox后，第一次抓smaps
+cat /proc/firefox-pid/smaps > 1
+
+运行training/debug/mm/munch.c后
+
+第2次抓smaps:
+cat /proc/firefox-pid/smaps > 2
+
+对比1 和 2
+
+2. page cache
+(1)
+把所有page cache放弃掉：
+sudo sh -c 'echo 3 > /proc/sys/vm/drop_caches'
+
+
+先看第一次
+#free
+
+运行
+sudo cat /dev/sda1 > /dev/null
+后，再看第2次
+#free
+观察其中的free命令各行变化
+
+最好用watch -n 1 free在"sudo cat /dev/sda1"运行过程中，周期性看free变化
+
+3. 
+放弃page cache
+sudo sh -c 'echo 3 > /proc/sys/vm/drop_caches'
+
+进入~/develop/training/debug/mm目录,运行
+time python hello.py 
+两次，看看2次时间上的不同
+
+4. 设备驱动模型
+在电脑上
+~/develop/training/kernel/drivers/globalfifo/ch12
+ sudo insmod globalfifo-dev.ko 
+观察/sys/bus/platform/devices目录
+ sudo insmod globalfifo.ko
+ 观察/sys/bus/platform/drivers目录变化
+ 
+5. modinfo和模块参数
+进入~/develop/training/kernel/drivers/param目录
+modinfo book.ko
+
+之后insmod book.ko
+
+然后dmesg
+
+之后rmmod book
+
+再重新加载：
+sudo insmod book.ko book_num=9832985
+
+然后dmesg
+
+6. proc
+进入~/develop/training/kernel目录
+sudo insmod proc.ko
+观察/proc下面多出来了test_dir，下面也多出来test_rw文件
+
+进行读写实验：
+baohua@baohua-VirtualBox:/proc/test_dir$ cat test_rw 
+0
+baohua@baohua-VirtualBox:/proc/test_dir$ sudo sh -c 'echo 4 > test_rw'
+[sudo] password for baohua: 
+baohua@baohua-VirtualBox:/proc/test_dir$ cat test_rw 
+4
+
+
+
+
+
+
+

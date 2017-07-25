@@ -1,0 +1,20 @@
+The default behavior is to run a new command:
+    taskset 03 sshd -b 1024
+You can retrieve the mask of an existing task:
+    taskset -p 700
+Or set it:
+    taskset -p 03 700
+List format uses a comma-separated list instead of a mask:
+    taskset -pc 0,3,7-11 700
+Ranges in list format can take a stride argument:
+    e.g. 0-31:2 is equivalent to mask 0x55555555
+
+For more information see taskset(1).
+root@baohua-VirtualBox:~# taskset -p 4713
+pid 4713's current affinity mask: 3
+root@baohua-VirtualBox:~# taskset -p 02 4713
+pid 4713's current affinity mask: 3
+pid 4713's new affinity mask: 2
+
+set all threads in a.out to CPU1:
+taskset -a -p 02 `pidof a.out`

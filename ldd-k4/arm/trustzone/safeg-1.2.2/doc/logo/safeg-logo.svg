@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="227.05754"
+   height="56.531059"
+   id="svg3205"
+   version="1.1"
+   inkscape:version="0.48.3.1 r9886"
+   sodipodi:docname="safeg-logo.svg">
+  <defs
+     id="defs3207" />
+  <sodipodi:namedview
+     id="base"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:pageopacity="0.0"
+     inkscape:pageshadow="2"
+     inkscape:zoom="2.8"
+     inkscape:cx="142.5935"
+     inkscape:cy="5.6994795"
+     inkscape:document-units="px"
+     inkscape:current-layer="layer1"
+     showgrid="false"
+     fit-margin-top="0"
+     fit-margin-left="0"
+     fit-margin-right="0"
+     fit-margin-bottom="0"
+     inkscape:window-width="1920"
+     inkscape:window-height="1124"
+     inkscape:window-x="1200"
+     inkscape:window-y="48"
+     inkscape:window-maximized="1" />
+  <metadata
+     id="metadata3210">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title />
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1"
+     transform="translate(-389.32837,-522.42897)">
+    <text
+       id="text3744-1"
+       y="562.00574"
+       x="444.27145"
+       style="font-size:34.96419907px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;fill:#000000;fill-opacity:1;stroke:none;font-family:Courier 10 Pitch;-inkscape-font-specification:Courier 10 Pitch Bold"
+       xml:space="preserve"
+       inkscape:export-xdpi="90"
+       inkscape:export-ydpi="90"><tspan
+         y="562.00574"
+         x="444.27145"
+         id="tspan3746-9"
+         sodipodi:role="line"><tspan
+           style="font-size:57.21414566px;font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;fill:#000000;fill-opacity:1;font-family:Courier 10 Pitch;-inkscape-font-specification:Courier 10 Pitch Bold"
+           id="tspan3020">SafeG </tspan></tspan></text>
+    <g
+       id="g3935"
+       transform="matrix(0.36000596,0,0,0.4623023,293.70628,65.597114)"
+       style="fill:#c51313;fill-opacity:1"
+       inkscape:export-filename="/home/dsl/text3744-1.png"
+       inkscape:export-xdpi="90"
+       inkscape:export-ydpi="90">
+      <path
+         inkscape:connector-curvature="0"
+         sodipodi:nodetypes="csssccccsscccscsccc"
+         id="path3912"
+         transform="translate(594.32454,923.55385)"
+         d="m -245.71875,78.65625 c -34.21667,0 -62.432,25.96362 -61.79018,48.00893 0.22424,7.70228 1.23405,11.46875 3.66071,15.04464 2.10009,3.09465 7.14818,6.8631 11.25893,8.28125 2.73477,0.94346 7.24159,1.98199 11.59375,1.52679 3.59756,-0.017 9.00527,-3.74508 10.08929,-2.86161 1.20536,0.58036 -3.28125,6.74999 -5.15625,7.6875 -1.12309,1.03197 -8.11401,3.75456 -9.6875,3.9375 10.80195,6.83797 24.76481,10.96875 40.03125,10.96875 34.21667,0 61.96875,-20.7119 61.96875,-46.28125 0,-25.569348 -27.75208,-46.3125 -61.96875,-46.3125 z m 7.28125,15.96875 c 11.53976,-0.501263 15.78528,13.27134 3.9375,21.84375 -5.61062,3.3564 -9.52744,5.1114 -13.8125,10.75 -3.32576,4.3763 -7.27985,11.77765 -8.78125,13.84375 -1.95967,1.9498 -5.40666,2.70145 -7.6875,2.71875 -10.65074,0.08 -14.5216,-9.9814 -10.15625,-20.8125 6.20181,-13.9406 19.67531,-23.98635 34.125,-28.03125 0.83167,-0.165937 1.60568,-0.279082 2.375,-0.3125 z"
+         style="fill:#c51313;fill-opacity:1;stroke:none" />
+      <path
+         inkscape:connector-curvature="0"
+         sodipodi:nodetypes="cscccsc"
+         id="path3914"
+         d="m 285.21787,1034.6223 c -1.95967,1.9498 -5.38995,2.7077 -7.67079,2.725 -10.65074,0.08 -14.53981,-9.9879 -10.17446,-20.819 6.20181,-13.9406 19.67705,-24.00697 34.12674,-28.05187 13.30667,-2.65502 18.9654,12.39007 6.32777,21.53397 -5.61062,3.3564 -9.52002,5.1117 -13.80508,10.7503 -3.32576,4.3763 -7.30278,11.7955 -8.80418,13.8616 z"
+         style="fill:#c51313;fill-opacity:1;stroke:none" />
+    </g>
+    <text
+       xml:space="preserve"
+       style="font-size:10.47819614px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;writing-mode:lr-tb;fill:#000000;fill-opacity:1;stroke:none;font-family:Nimbus Sans L;-inkscape-font-specification:Nimbus Sans L"
+       x="518.07629"
+       y="503.33289"
+       id="text3887"
+       transform="scale(0.87318293,1.1452354)"
+       inkscape:export-filename="/home/dsl/text3744-1.png"
+       inkscape:export-xdpi="90"
+       inkscape:export-ydpi="90"><tspan
+         sodipodi:role="line"
+         id="tspan3889"
+         x="518.07629"
+         y="503.33289"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:Arial;-inkscape-font-specification:Arial">Real-Time Embedded Dual-OS System</tspan></text>
+  </g>
+</svg>

@@ -1,0 +1,124 @@
+
+                   TOPPERS/SafeG build process overview
+                   ------------------------------------
+
+                             Daniel Sangorrin
+                       (daniel.sangorrin@gmail.com)
+                               26-March-2013
+
+This file provides a very basic overview and general notes about the
+_typical_ process of building a dual-OS system based on TOPPERS/SafeG. For
+a more accurate description please consult the documentation for your
+specific target board at 'doc/$(LANG)/target/$(TARGET_NAME)'.
+
+WHAT IS THE TYPICAL COMPILATION ENVIRONMENT?
+============================================
+
+TOPPERS/SafeG is typically built on a recent distribution of Ubuntu. A
+typical environment also requires the following tools:
+
+    - Essential utilities for building software (e.g., make)
+    - An ARM cross-compiler (e.g., CodeSourcery G++ Lite ARM toolchain)
+    - A TFTP server [optional]
+    - A JTAG debugger [optional]
+
+More detailed information about the compilation environment may be provided
+by the board's documentation at 'doc/$(LANG)/target/$(TARGET_NAME)'. We
+suggest to check the folders in all languages just in case.
+
+WHAT NEEDS TO BE BUILT?
+=======================
+
+A TOPPERS/SafeG dual-OS system usually requires the following software
+to be built. Here we provide generic instructions for building each software
+module here. IMPORTANT: always refer to the target's documentation (located
+at 'doc/$(LANG)/target/$(TARGET_NAME)') for detailed information.
+
+    - The TrustZone monitor (see also "COMPILING TOPPERS/SafeG" at
+      'introduction.txt')
+
+    $ make -C monitor/ TARGET_NAME=$(TARGET_NAME)
+
+    - U-Boot (for loading binaries when not using JTAG)
+
+    $ make ARCH=arm CROSS_COMPILE=arm-xxx- xxx_config
+    $ make ARCH=arm CROSS_COMPILE=arm-xxx-
+
+    - Linux kernel (runs in Non-Trust state)
+
+    $ make ARCH=arm CROSS_COMPILE=arm-xxx- menuconfig
+    $ make ARCH=arm CROSS_COMPILE=arm-none-eabi- uImage
+
+    - TOPPERS/FMP (runs in Trust state)
+
+    $ cd test/
+    $ make depend
+    $ make
+
+    - Buildroot (or any other filesystem for Linux)
+
+    $ make menuconfig
+    $ make
+
+Please refer to the target's documentation (i.e.: 'doc/$(LANG)/target/
+$(TARGET_NAME)') or the corresponding software module's documentation for
+more information. In case of trouble, follow the instructions at section
+"IF SOMETHING GOES WRONG" on 'introduction.txt'.
+
+EXECUTING SAFEG
+===============
+
+In a typical dual-OS system based on SafeG, during the development phase
+binaries are loaded into the board through JTAG or by using the board's
+boot loader (e.g., U-Boot) to load the TrustZone monitor and the Trusted
+and Non-Trusted binaries.
+
+During the development phase, when using U-Boot, binaries are usually loaded
+from a host's TFTP server (e.g., using tftpd-hpa on Ubuntu). The
+Non-Trusted filesystem is usually exported by the host through NFS.
+
+Example that loads SafeG using u-boot through TFTP:
+
+    u-boot $ setenv bootargs root=/dev/nfs...
+    u-boot $ tftp 0x10300000 safeg.bin
+    u-boot $ tftp 0x10320000 trust.bin
+    u-boot $ tftp 0x6000000 non-trust.bin
+    u-boot $ go 0x10300000
+
+The output messages from each guest OS are typically received through two
+or more serial port connections from the host to the board. You need a
+serial client application (e.g., minicom, teraterm, screen or picocom).
+For example:
+
+    host $ picocom --b 38400 /dev/ttyUSB0 [Trusted]
+    host $ picocom --b 38400 /dev/ttyUSB1 [Non-Trusted]
+
+When the development phase is over, the binaries and filesystem are usually
+written into a memory device (e.g., an MMC card or a FLASH memory).
+For example:
+
+    Flash> list images
+
+    Address     Name
+    -------     ----
+    0x3C000000  Boot_Monitor
+    0x3C080000  u-boot
+    0x3C0C0000  safeg.bin
+    0x3C100000  fmp.bin
+    0x30040000  linux.bin
+    0x30440000  cramfs
+
+The execution sequence is usually as follows:
+
+    1) The board is switched on.
+    2) The board's bootloader starts.
+    3) The bootloader loads the TrustZone monitor, FMP and Linux to memory.
+    4) The bootloader jumps to the monitor.
+    5) The monitor initializes TrustZone settings and jumps to FMP.
+    6) FMP initializes and starts execution of its applications.
+    7) When FMP becomes idle, it calls the monitor.
+    8) The monitor switches to Non-Secure world and jumps to Linux.
+    9) Linux executes.
+   10) FMP timer interrupt is rised and trapped by the monitor.
+   11) The monitor switches to Secure world, where FMP executes.
+   12) Go to 7)

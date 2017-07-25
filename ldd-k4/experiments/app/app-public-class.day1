@@ -1,0 +1,19 @@
+1. strace/ltrace
+2. gdb:
+training/debug/gdb
+~/develop/training/debug/gdb
+(1)gdb attach pid
+(2)gdb tui
+(3)gdb call functions
+(4)gdb debug multithreads:
+	training/thread/thread_life.c
+(5)ddd
+3. coredump:
+training/debug/core-dump
+4. objdump disassemble
+5. Makefile:
+(1)training/makefile/binary
+(2)training/autoconf-automake/project-flat1
+(3)training/autoconf-automake/project-flat2
+(4)training/autoconf-automake/project-deep
+6. shell: training/shell

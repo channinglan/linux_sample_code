@@ -1,0 +1,3 @@
+1. arm-linux-gnueabi-gcc --static -o syshello hello.c 
+2. after mount sd card, copy syshello to extra/img
+3. run syshello on arm qemu

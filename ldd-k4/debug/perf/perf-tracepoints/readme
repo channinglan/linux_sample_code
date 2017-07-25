@@ -1,0 +1,42 @@
+perf record -e raw_syscalls:* ls
+perf script
+              ls 13899 [001] 46820.592841: raw_syscalls:sys_exit: NR 11 = 0
+              ls 13899 [001] 46820.592873: raw_syscalls:sys_enter: NR 45 (0, b7769c2c, b778b000, 8048034, 9, bfcfd86b)
+              ls 13899 [001] 46820.592876: raw_syscalls:sys_exit: NR 45 = 145735680
+              ls 13899 [001] 46820.592890: raw_syscalls:sys_enter: NR 33 (b7783f1b, 0, b778b000, b7769548, 0, bfcfd508)
+              ls 13899 [001] 46820.592894: raw_syscalls:sys_exit: NR 33 = -2
+              ls 13899 [001] 46820.592898: raw_syscalls:sys_enter: NR 192 (0, 2000, 3, 22, ffffffff, 0)
+              ls 13899 [001] 46820.592901: raw_syscalls:sys_exit: NR 192 = -1216983040
+              ls 13899 [001] 46820.592915: raw_syscalls:sys_enter: NR 5 (b7766838, 80000, 20, bfcfd560, bfcfd1b3, bfcfd158)
+              ls 13899 [001] 46820.592920: raw_syscalls:sys_exit: NR 5 = 4
+              ls 13899 [001] 46820.592922: raw_syscalls:sys_enter: NR 3 (4, bfcfd1c0, 200, 0, 200, bfcfd158)
+              ls 13899 [001] 46820.592925: raw_syscalls:sys_exit: NR 3 = 512
+              ls 13899 [001] 46820.592929: raw_syscalls:sys_enter: NR 197 (4, bfcfd0e0, b778b000, bfcfd5
+
+root@baohua-VirtualBox:~# cat /sys/kernel/debug/tracing/events/raw_syscalls/sys_enter/format 
+name: sys_enter
+ID: 38
+format:
+	field:unsigned short common_type;	offset:0;	size:2;	signed:0;
+	field:unsigned char common_flags;	offset:2;	size:1;	signed:0;
+	field:unsigned char common_preempt_count;	offset:3;	size:1;	signed:0;
+	field:int common_pid;	offset:4;	size:4;	signed:1;
+
+	field:long id;	offset:8;	size:4;	signed:1;
+	field:unsigned long args[6];	offset:12;	size:24;	signed:0;
+
+print fmt: "NR %ld (%lx, %lx, %lx, %lx, %lx, %lx)", REC->id, REC->args[0], REC->args[1], REC->args[2], REC->args[3], REC->args[4], REC->args[5]
+root@baohua-VirtualBox:~# cat /sys/kernel/debug/tracing/events/raw_syscalls/sys_exit/format 
+name: sys_exit
+ID: 37
+format:
+	field:unsigned short common_type;	offset:0;	size:2;	signed:0;
+	field:unsigned char common_flags;	offset:2;	size:1;	signed:0;
+	field:unsigned char common_preempt_count;	offset:3;	size:1;	signed:0;
+	field:int common_pid;	offset:4;	size:4;	signed:1;
+
+	field:long id;	offset:8;	size:4;	signed:1;
+	field:long ret;	offset:12;	size:4;	signed:1;
+
+print fmt: "NR %ld = %ld", REC->id, REC->ret
+

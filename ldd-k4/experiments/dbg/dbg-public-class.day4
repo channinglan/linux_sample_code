@@ -1,0 +1,36 @@
+1. debug multi-thread by gdb: training/thread/thread_life.c
+
+2. stack overflow: training/thread/stack_overflow.c
+
+3. ipcs to figure out the status of shared memory and sem
+
+4. lsof /dev/shm/xxx and find the related process for POSIX shared memory
+training/process/posix-ipc
+~/develop/training/process/posix-ipc(shm,sem)
+
+5. use gdb to dump mutex owner
+training/thread/deadlock
+
+6. run oprofile, perf
+training/debug/perf-sched: readme
+sudo perf sched record sleep 5
+sudo perf timechart
+firefox ....
+
+oprofile:
+# sudo opcontrol --reset
+Signalling daemon... done
+# sudo opcontrol --init
+# sudo opcontrol --start
+Profiler running.
+# sudo opcontrol --dump
+# opreport -la
+# sudo opcontrol --stop
+
+7. run lttv-gui and read lttng result: training/debug/lttng-traced-data
+
+8. run sar, top, iostat, iotop
+
+9. run ~/develop/training/preempt-rt/pi.c with "sudo"
+
+10. ~/develop/training/thread/signalsync.c

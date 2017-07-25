@@ -1,0 +1,4 @@
+run:
+qemu-system-arm -M versatilepb -m 128M -kernel hello_world.bin
+
+see console: ctrl+alt+3

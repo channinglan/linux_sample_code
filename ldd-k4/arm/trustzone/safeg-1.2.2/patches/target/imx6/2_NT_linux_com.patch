@@ -1,0 +1,25 @@
+diff --git a/Makefile b/Makefile
+index 661e098..3427964
+--- a/Makefile
++++ b/Makefile
+@@ -735,7 +735,7 @@ export mod_sign_cmd
+ 
+ 
+ ifeq ($(KBUILD_EXTMOD),)
+-core-y		+= kernel/ mm/ fs/ ipc/ security/ crypto/ block/
++core-y		+= kernel/ mm/ fs/ ipc/ security/ crypto/ block/ safeg/
+ 
+ vmlinux-dirs	:= $(patsubst %/,%,$(filter %/, $(init-y) $(init-m) \
+ 		     $(core-y) $(core-m) $(drivers-y) $(drivers-m) \
+diff --git a/arch/arm/mach-imx/Kconfig b/arch/arm/mach-imx/Kconfig
+index 8301dfe..b6e37fa
+--- a/arch/arm/mach-imx/Kconfig
++++ b/arch/arm/mach-imx/Kconfig
+@@ -885,4 +885,7 @@ endif
+ 
+ source "arch/arm/mach-imx/devices/Kconfig"
+ 
++comment "SafeG Configuration"
++source "safeg/Kconfig"
++
+ endmenu

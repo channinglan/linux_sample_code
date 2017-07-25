@@ -1,0 +1,23 @@
+
+                         TOPPERS/SafeG: Quick Start
+                         --------------------------
+
+                             Daniel Sangorrin
+                       (daniel.sangorrin@gmail.com)
+                               26-March-2013
+
+A good way to quickly start using TOPPERS/SafeG is to execute it on the QEMU
+emulator.
+
+We suggest following these steps:
+
+    1.- Make sure you have read the document 'introduction.txt' and you
+        understand the basic idea of SafeG. You can find more information
+        on the 'references.txt' file.
+
+    2.- Build and execute SafeG for the QEMU vexpress A9 target. The
+        documentation is located at 'doc/en/target/vexpressa9/README.txt'.
+        Follow all the steps until you succesfuly execute SafeG.
+
+If you have any problems running SafeG on the QEMU, follow the instructions
+at section "IF SOMETHING GOES WRONG" on 'introduction.txt'.

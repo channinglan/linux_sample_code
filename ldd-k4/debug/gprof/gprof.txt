@@ -1,0 +1,116 @@
+exam: test.c
+
+#include "stdio.h"
+#include "stdlib.h"
+
+void a()
+{
+        volatile int i=20000000;
+        while(i--);
+}
+
+
+void c()
+{
+        volatile int i=40000000;
+        while(i--);
+}
+
+int b()
+{
+        volatile int i=50000000;
+        while(i--);
+
+        a();
+        c();
+        return 0;
+}
+
+int main()
+{
+        printf(" main() function()\n");
+        b();
+}
+
+compile with -pg
+$ gcc -pg test.c 
+run:
+$ ./a.out 
+
+baohua@baohua-VirtualBox:~/develop/training/debug/gprof$ gprof -b a.out gmon.out
+Flat profile:
+
+Each sample counts as 0.01 seconds.
+  %   cumulative   self              self     total           
+ time   seconds   seconds    calls  ms/call  ms/call  name    
+ 46.15      0.12     0.12        1   120.00   260.00  b
+ 34.62      0.21     0.09        1    90.00    90.00  c
+ 19.23      0.26     0.05        1    50.00    50.00  a
+
+
+			Call graph
+
+
+granularity: each sample hit covers 4 byte(s) for 3.85% of 0.26 seconds
+
+index % time    self  children    called     name
+                0.12    0.14       1/1           main [2]
+[1]    100.0    0.12    0.14       1         b [1]
+                0.09    0.00       1/1           c [3]
+                0.05    0.00       1/1           a [4]
+-----------------------------------------------
+                                                 <spontaneous>
+[2]    100.0    0.00    0.26                 main [2]
+                0.12    0.14       1/1           b [1]
+-----------------------------------------------
+                0.09    0.00       1/1           b [1]
+[3]     34.6    0.09    0.00       1         c [3]
+-----------------------------------------------
+                0.05    0.00       1/1           b [1]
+[4]     19.2    0.05    0.00       1         a [4]
+-----------------------------------------------
+
+
+Index by function name
+
+
+
+
+LINE-By-LINE profiling:
+
+$ gprof -l -b a.out gmon.out
+Flat profile:
+
+Each sample counts as 0.01 seconds.
+  %   cumulative   self              self     total           
+ time   seconds   seconds    calls  Ts/call  Ts/call  name    
+ 46.15      0.12     0.12                             b (test.c:20 @ 8048573)
+ 38.46      0.22     0.10                             c (test.c:14 @ 8048551)
+ 15.38      0.26     0.04                             a (test.c:7 @ 804852f)
+  0.00      0.26     0.00        1     0.00     0.00  a (test.c:5 @ 804851d)
+  0.00      0.26     0.00        1     0.00     0.00  b (test.c:18 @ 8048561)
+  0.00      0.26     0.00        1     0.00     0.00  c (test.c:12 @ 804853f)
+
+
+			Call graph
+
+
+granularity: each sample hit covers 4 byte(s) for 3.85% of 0.26 seconds
+
+index % time    self  children    called     name
+                0.00    0.00       1/1           b (test.c:20 @ 8048573) [1]
+[4]      0.0    0.00    0.00       1         a (test.c:5 @ 804851d) [4]
+-----------------------------------------------
+                0.00    0.00       1/1           main (test.c:30 @ 80485ac) [22]
+[5]      0.0    0.00    0.00       1         b (test.c:18 @ 8048561) [5]
+-----------------------------------------------
+                0.00    0.00       1/1           b (test.c:23 @ 8048586) [12]
+[6]      0.0    0.00    0.00       1         c (test.c:12 @ 804853f) [6]
+-----------------------------------------------
+
+
+Index by function name
+
+   [4] a (test.c:5 @ 804851d)  [5] b (test.c:18 @ 8048561) [6] c (test.c:12 @ 804853f)
+   [3] a (test.c:7 @ 804852f)  [1] b (test.c:20 @ 8048573) [2] c (test.c:14 @ 8048551)
+

@@ -1,0 +1,38 @@
+diff --git a/Makefile b/Makefile
+index c41f851..9c6ca85 100644
+--- a/Makefile
++++ b/Makefile
+@@ -736,7 +736,7 @@ $(VERSION_FILE):
+ 		@( localvers='$(shell $(TOPDIR)/tools/setlocalversion $(TOPDIR))' ; \
+ 		   printf '#define PLAIN_VERSION "%s%s"\n' \
+ 			"$(U_BOOT_VERSION)" "$${localvers}" ; \
+-		   printf '#define U_BOOT_VERSION "U-Boot %s%s"\n' \
++		   printf '#define U_BOOT_VERSION "Non-Trust U-Boot %s%s"\n' \
+ 			"$(U_BOOT_VERSION)" "$${localvers}" ; \
+ 		) > $@.tmp
+ 		@( printf '#define CC_VERSION_STRING "%s"\n' \
+diff --git a/arch/arm/cpu/armv7/socfpga/s_init.c b/arch/arm/cpu/armv7/socfpga/s_init.c
+index d4a0d1d..de44a16 100644
+--- a/arch/arm/cpu/armv7/socfpga/s_init.c
++++ b/arch/arm/cpu/armv7/socfpga/s_init.c
+@@ -89,6 +89,6 @@ void s_init(void)
+ #ifdef CONFIG_SOCFPGA_VIRTUAL_TARGET
+ 	writel(0x2, SOCFPGA_L3REGS_ADDRESS);
+ #else
+-	writel(0x1, (SOCFPGA_MPUL2_ADDRESS + SOCFPGA_MPUL2_ADRFLTR_START));
++	//writel(0x1, (SOCFPGA_MPUL2_ADDRESS + SOCFPGA_MPUL2_ADRFLTR_START));
+ #endif
+ }
+diff --git a/common/main.c b/common/main.c
+index 5d8454e..8ae1024 100644
+--- a/common/main.c
++++ b/common/main.c
+@@ -458,7 +458,7 @@ void main_loop (void)
+ 	}
+ 	else
+ #endif /* CONFIG_BOOTCOUNT_LIMIT */
+-		s = getenv ("bootcmd");
++		s = getenv ("bootcmd_nt");
+ #ifdef CONFIG_OF_CONTROL
+ 	/* Allow the fdt to override the boot command */
+ 	env = fdtdec_get_config_string(gd->fdt_blob, "bootcmd");

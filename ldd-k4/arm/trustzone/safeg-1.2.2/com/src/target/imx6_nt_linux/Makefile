@@ -1,0 +1,1 @@
+obj-$(CONFIG_SAFEG_DOSCOM) += doscom.o

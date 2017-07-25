@@ -1,0 +1,36 @@
+1. gdb attach多线程
+use gdb to dump mutex owner
+training/thread/deadlock
+
+2. perf sched
+training/debug/perf-sched: readme
+sudo perf sched record sleep 5
+sudo perf timechart
+firefox output.svg
+
+3. oprofile
+# sudo opcontrol --reset
+Signalling daemon... done
+# sudo opcontrol --init
+# sudo opcontrol --start
+Profiler running.
+# sudo opcontrol --dump
+# opreport -la
+# sudo opcontrol --stop
+
+4. 运行sar, top, iostat, iotop
+用dd if=/dev/sda1 of=/dev/null制造一些I/O负载
+
+5. 网卡(软)中断负载均衡
+调整 /proc/irq/19/smp_affinity迁移中断,cat /proc/interrupts观察变化;
+调整 /sys/class/net/eth0/queues/rx-0/rps_cpus迁移软中断,cat /proc/softirqs观察变化;
+
+6. lttng
+run lttv-gui and read lttng result: training/debug/lttng-traced-data
+
+7. posix进程间通信
+~/develop/training/process/posix-ipc
+观察/dev/shm/xxx
+
+8. 异步信号同步化
+~/develop/training/thread/signalsync.c 

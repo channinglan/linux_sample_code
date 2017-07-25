@@ -1,0 +1,60 @@
+1. 通过cgroup分配CPU资源
+
+在/sys/fs/cgroup/cpu创建2个group，然后把放到不同group，
+调整group的cpu.shares,cpu.cfs_quota_us
+~/develop/training/thread/thread_life.c
+
+2. 分析taskset用修改线程affinity
+~/develop/training/thread/thread_life.c运行,设置不同的cpu affinity: 01, 02, 03
+taskset -a -p 02 `pidof a.out`
+
+3. 用smem观察进程的内存变化
+	$ smem
+	$ smem --pie=comand
+	$ smem --bar=command
+
+4. 做I/O动作，观察page cache变化
+drop cache at first:
+root@baohua-VirtualBox:/proc/sys/vm# echo 3 > drop_caches
+
+#free
+#cat /dev/sda1 > /dev/null
+#free
+
+compare the output of the two free
+
+5. 运行一个引起OOM的程序
+$ sudo swapoff -a
+$ sudo sh -c 'echo 1 > /proc/sys/vm/overcommit_memory'
+
+run: training/debug/mm/munch.c
+#dmesg
+
+6. 观察一个进程的代码段rss/pss的变化
+运行1份./a.out
+运行2份./a.out
+运行3份./a.out
+查看/proc/<a.out-pid>/smaps文件第一段
+
+7. 观察一个进程在运行中代码段等的swapping out
+
+launch firefox
+cat /proc/firefox-pid/smaps > 1
+run: training/debug/mm/munch.c
+cat /proc/firefox-pid/smaps > 2
+compare 1 and 2 by meld
+
+8.使用JTAG和GDB调试内核
+use qemu-system-arm with "-s -S", and use arm gdb to debug embedded kernel
+
+shell1:
+~/develop/linux/extra/ run-nolcd.sh or run-lcd.sh
+before running, add -s -S in the script.
+
+shell2:
+cd ~/develop/linux
+arm-linux-gnueabihf-gdb vmlinux
+# target remote :1234
+
+9.分析一个kernel soft lockup的信息
+

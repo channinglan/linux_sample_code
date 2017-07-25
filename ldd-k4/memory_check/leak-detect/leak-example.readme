@@ -1,0 +1,5 @@
+# gcc
+# run ./a.out
+# smem periodically 
+# cat /proc/pid/smaps periodically and compare
+

@@ -1,0 +1,9 @@
+arm-linux-gnueabihf-gcc -O3 -c exam.c -o exam.o
+
+with or without
+#define barrier() __asm__ __volatile__("": : :"memory")
+
+objdump to
+1.asm and 2.asm
+
+meld

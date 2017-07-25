@@ -1,0 +1,8 @@
+core dump
+(1)
+可以用下面的语句设置一下, 然后再运行程序便成生成core文件.
+ulimit -c unlimited
+
+(2)
+set core pattern:
+sudo sh -c 'echo "core" > /proc/sys/kernel/core_pattern'

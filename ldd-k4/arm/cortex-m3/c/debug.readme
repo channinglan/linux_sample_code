@@ -1,0 +1,4 @@
+qemu-system-arm -cpu cortex-m3  -M lm3s6965evb  -S -gdb tcp::1234 -nographic -kernel test.bin 
+
+#In another terminal, launch GDB:
+arm-none-eabi-gdb test.elf 

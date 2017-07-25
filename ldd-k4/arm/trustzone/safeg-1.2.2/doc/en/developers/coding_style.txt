@@ -1,0 +1,19 @@
+
+                        TOPPERS/SafeG Coding Style
+                        --------------------------
+
+                             Daniel Sangorrin
+                       (daniel.sangorrin@gmail.com)
+                               21-dec-2012
+
+This is a short document describing the preferred coding style for the
+source code of TOPPERS/SafeG.
+
+File encoding: UTF-8.
+Indentation: 4 spaces (no tabs).
+Trailing white spaces: remove them automatically in your editor.
+Line's maximum lenght: 80 characters.
+Switches: switch and case are aligned.
+Braces: put the opening brace last on the line (except functions). Don't
+        use braces in single statements.
+Comments: use /**/. // are also OK for single-line comments.

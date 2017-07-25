@@ -1,0 +1,57 @@
+
+                         TOPPERS/SafeG: Notifiers
+                         ------------------------
+
+                             Daniel Sangorrin
+                       (daniel.sangorrin@gmail.com)
+                               26-March-2013
+
+This document describes the notifiers interface of the TOPPERS/SafeG
+monitor.
+
+Overview
+========
+
+The notifiers module allows the T OS to register function callbacks that
+are executed from SafeG's monitor whenever an certain event occurs.
+Notifiers are useful for performance evaluation, event monitoring, tracing,
+panic recovery or debugging for examples.
+
+Notifier chains and events
+==========================
+
+A notifier callback is registered to a notifier chain through which events
+are sent. The following chains and events are available:
+
+    NOTIFIER_CHAIN_ID_FIQ
+        NOTIFIER_EVENT_ID_FIQ_ENTER
+        NOTIFIER_EVENT_ID_FIQ_T_EXIT
+        NOTIFIER_EVENT_ID_FIQ_NT_EXIT
+    NOTIFIER_CHAIN_ID_SMC
+        NOTIFIER_EVENT_ID_SMC_ENTER
+        NOTIFIER_EVENT_ID_SMC_DONT_SWITCH_EXIT
+        NOTIFIER_EVENT_ID_SMC_SWITCH_TO_NT_EXIT
+        NOTIFIER_EVENT_ID_SMC_SWITCH_TO_T_EXIT
+    NOTIFIER_CHAIN_ID_IRQ
+        NOTIFIER_EVENT_ID_IRQ_ENTER
+        NOTIFIER_EVENT_ID_IRQ_NT_EXIT
+    NOTIFIER_CHAIN_ID_PANIC
+        NOTIFIER_EVENT_ID_PANIC_IRQ_IN_T
+        NOTIFIER_EVENT_ID_PANIC_IRQ_IN_NT
+        NOTIFIER_EVENT_ID_PANIC_PREFETCH
+        NOTIFIER_EVENT_ID_PANIC_DATA
+
+Notifiers application interface (API)
+=========================
+
+Applications willing to use the notifiers functionality should use the
+library at 'monitor/libsafeg/'.
+
+Please refer to 'monitor/libsafeg/syscalls_api.h' for a detailed explanation
+of the constants and functions that constitute the notifiers API.
+
+Examples
+========
+
+The folder 'sample/fmp/notify_logger' contains an example of an
+application using the notifiers interface.

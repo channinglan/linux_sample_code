@@ -1,0 +1,53 @@
+1. process生命周期
+用~/develop/training/process/life_period.c的代码，观察父进程如何等子进程；
+
+2. 孤儿进程
+用~/develop/training/process/life_period.c的代码进行修改，尝试
+a. 父进程先被kill，子进程不被kill；观察pstree
+b. 子进程被kill，父进程不wait；观察僵尸进程
+
+3. 跑多线程程序： 
+training/thread/thread_life.c   "-pthread"
+用strace跟踪程序的运行
+
+4. kernel thread
+在第一天的hello模块的module_init中启动一个kernel thread
+
+ #include <linux/init.h>
++#include <linux/delay.h>
+ #include <linux/module.h>
++#include <linux/kthread.h>
++
++static int test_task(void * unused)
++{
++        while(1) {
++               ssleep(1);
++               printk("%s\n", __func__);
++       }
++       return 0;
++}
+ 
+ static int __init hello_init(void)
+ {
++       struct task_struct *task;
++       task = kthread_run(test_task, NULL, "test");
++       if (IS_ERR(task))
++               return PTR_ERR(task);
++
+        printk(KERN_INFO "Hello World enter\n");
+        return 0;
+ }
+
+5. 观察buddyinfo和slabinfo(pcduino3和电脑上)
+cat /proc/buddyinfo
+cat /proc/slabinfo
+
+6. 观察out-of-memory
+在电脑上面运行
+#sudo bash
+#swapoff -a
+# sudo sh -c 'echo 1 > /proc/sys/vm/overcommit_memory'
+跑程序training/debug/mm/munch.c
+
+观察系统out-of-memory后的杀进程, dmesg
+

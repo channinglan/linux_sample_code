@@ -1,0 +1,1 @@
+sudo mount -t aufs -o dirs=./test1:./test2 none ./mnt

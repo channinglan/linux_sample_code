@@ -1,0 +1,28 @@
+1. lttng-gen-tp hello-tp.tp
+
+The following files will be created next to hello-tp.tp:
+hello-tp.c
+hello-tp.o
+hello-tp.h
+
+2. gcc -o hello hello.c hello-tp.o -llttng-ust -ldl
+
+3. ./hello world and beyond
+You should see
+Hello, World!
+Press Enter to continue...
+
+
+4. Use the lttng tool to list all available user space events:
+lttng list --userspace
+You should see the hello_world:my_first_tracepoint tracepoint listed under the ./hello process.
+
+5.Create a tracing session:
+lttng create my-userspace-session
+Enable the hello_world:my_first_tracepoint tracepoint:
+
+lttng enable-event --userspace hello_world:my_first_tracepoint
+Start tracing:
+lttng start
+
+lttng stop

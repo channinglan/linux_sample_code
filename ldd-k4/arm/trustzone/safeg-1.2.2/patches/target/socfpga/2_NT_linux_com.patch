@@ -1,0 +1,53 @@
+diff --git a/Makefile b/Makefile
+index 7efa606..cbb6521 100644
+--- a/Makefile
++++ b/Makefile
+@@ -733,7 +733,7 @@ export mod_sign_cmd
+ 
+ 
+ ifeq ($(KBUILD_EXTMOD),)
+-core-y		+= kernel/ mm/ fs/ ipc/ security/ crypto/ block/
++core-y		+= kernel/ mm/ fs/ ipc/ security/ crypto/ block/ safeg/
+ 
+ vmlinux-dirs	:= $(patsubst %/,%,$(filter %/, $(init-y) $(init-m) \
+ 		     $(core-y) $(core-m) $(drivers-y) $(drivers-m) \
+diff --git a/arch/arm/mach-socfpga/Kconfig b/arch/arm/mach-socfpga/Kconfig
+index 9f98e9a..9f89a80 100644
+--- a/arch/arm/mach-socfpga/Kconfig
++++ b/arch/arm/mach-socfpga/Kconfig
+@@ -32,3 +32,7 @@ config FPGADMA
+ 	depends on DMA_ENGINE
+ 	help
+ 		Sample FPGA DMA driver, for testing with special FPGA FIFO image
++
++comment "SafeG Configuration"
++source "safeg/Kconfig"
++
+diff --git a/safeg/Kconfig b/safeg/Kconfig
+new file mode 100644
+index 0000000..aec8dbb
+--- /dev/null
++++ b/safeg/Kconfig
+@@ -0,0 +1,14 @@
++config SAFEG
++	bool "Enable SafeG extensions"
++	default y
++	help
++	  Enables SafeG extensions to the Linux kernel.
++
++config SAFEG_DOSCOM
++	bool "Inter-OS communications"
++	depends on SAFEG
++	default y
++	help
++	  Enable SafeG inter-OS communications framework.
++
++
+diff --git a/safeg/Makefile b/safeg/Makefile
+new file mode 100644
+index 0000000..508edeb
+--- /dev/null
++++ b/safeg/Makefile
+@@ -0,0 +1,2 @@
++obj-$(CONFIG_SAFEG_DOSCOM) += doscom.o
++
