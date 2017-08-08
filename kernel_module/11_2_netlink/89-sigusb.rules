@@ -1,0 +1,3 @@
+
+KERNEL=="*", SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", ACTION=="add", ATTR{idVendor}=="1234",ATTR{idProduct}=="4567", MODE="666", TAG="XXX_DEV_ID", RUN+="/usr/local/bin/sig_renumerate.sh A"
+KERNEL=="*", SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", ACTION=="remove", TAG=="XXX_DEV_ID", RUN+="/usr/local/bin/sig_renumerate.sh R"

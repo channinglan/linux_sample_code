@@ -6,7 +6,9 @@ obj-m := 1_0_hello.o	\
 	7_0_timing.o \
 	7_1_timer.o \
 	7_2_tasklet.o	\
-	7_3_workqueue.o
+	7_3_workqueue.o	\
+	12_0_netfilter.o
+	
 	
 #	3_0_procfs_r.o \
 #	3_0_procfs_w.o \
