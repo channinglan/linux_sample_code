@@ -7,8 +7,8 @@ obj-m := 1_0_hello.o	\
 	7_1_timer.o \
 	7_2_tasklet.o	\
 	7_3_workqueue.o	\
-	12_0_netfilter.o
-	
+	12_0_netfilter.o \
+	16_1_Network_Device_Driver_simple_snull.o
 	
 #	3_0_procfs_r.o \
 #	3_0_procfs_w.o \
