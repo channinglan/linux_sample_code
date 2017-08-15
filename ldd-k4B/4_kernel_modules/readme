@@ -1,0 +1,38 @@
+
+### 4_5_module_parameters
+ insmod 4_5_module_parameters.ko
+ 
+[10756.185883] Hello world
+[10756.185910] b_byte: 1
+[10756.185911] b_short: 2
+[10756.185912] b_ushort: 3
+[10756.185912] b_int: 6
+[10756.185913] b_uint: 5
+[10756.185913] b_long: 6
+[10756.185915] b_ulong: 7
+[10756.185915] b_charp: brook
+[10756.185916] b_bool: 1
+
+
+
+### 4_10_hello
+insmod 4_6_export_symb.ko
+insmod 4_10_export_symb.ko
+insmod 4_10_hello.ko
+
+dmesg
+
+[10524.223415] Hello World enter
+[10524.223418] add_integar 3
+[10524.223419] add_integar2 3
+[10524.223420] sub_integar -1
+[10524.223420] sub_integar2 -1
+
+
+如果沒先載入4_6_export_symb.ko 跟 4_10_export_symb.ko
+[10479.792220] 4_10_hello: Unknown symbol add_integar (err 0)
+[10479.792325] 4_10_hello: Unknown symbol sub_integar (err 0)
+[10479.792331] 4_10_hello: Unknown symbol add_integar2 (err 0)
+[10479.792365] 4_10_hello: Unknown symbol sub_integar2 (err 0)
+
+
