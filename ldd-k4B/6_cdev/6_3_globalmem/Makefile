@@ -1,5 +1,5 @@
 KVERS = $(shell uname -r)
-
+CONFIG_MODULE_SIG=n
 # Kernel modules
 obj-m += globalmem.o
 obj-m += multi_globalmem.o

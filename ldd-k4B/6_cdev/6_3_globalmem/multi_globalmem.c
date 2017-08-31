@@ -30,14 +30,16 @@ struct globalmem_dev *globalmem_devp;
 
 static int globalmem_open(struct inode *inode, struct file *filp)
 {
-	struct globalmem_dev *dev = container_of(inode->i_cdev,
-				struct globalmem_dev, cdev);  
+	struct globalmem_dev *dev = container_of(inode->i_cdev,struct globalmem_dev, cdev);  
+	
+	pr_info( "%s\n", __func__);					
 	filp->private_data = dev;
 	return 0;
 }
 
 static int globalmem_release(struct inode *inode, struct file *filp)
 {
+	pr_info( "%s\n", __func__);	
 	return 0;
 }
 
@@ -45,7 +47,7 @@ static long globalmem_ioctl(struct file *filp, unsigned int cmd,
 			    unsigned long arg)
 {
 	struct globalmem_dev *dev = filp->private_data;
-
+	pr_info( "%s\n", __func__);
 	switch (cmd) {
 	case MEM_CLEAR:
 		memset(dev->mem, 0, GLOBALMEM_SIZE);
@@ -66,7 +68,7 @@ static ssize_t globalmem_read(struct file *filp, char __user * buf, size_t size,
 	unsigned int count = size;
 	int ret = 0;
 	struct globalmem_dev *dev = filp->private_data;
-
+	pr_info( "%s\n", __func__);
 	if (p >= GLOBALMEM_SIZE)
 		return 0;
 	if (count > GLOBALMEM_SIZE - p)
@@ -91,7 +93,7 @@ static ssize_t globalmem_write(struct file *filp, const char __user * buf,
 	unsigned int count = size;
 	int ret = 0;
 	struct globalmem_dev *dev = filp->private_data;
-
+	pr_info( "%s\n", __func__);
 	if (p >= GLOBALMEM_SIZE)
 		return 0;
 	if (count > GLOBALMEM_SIZE - p)
@@ -112,6 +114,7 @@ static ssize_t globalmem_write(struct file *filp, const char __user * buf,
 static loff_t globalmem_llseek(struct file *filp, loff_t offset, int orig)
 {
 	loff_t ret = 0;
+	pr_info( "%s\n", __func__);	
 	switch (orig) {
 	case 0:
 		if (offset < 0) {
@@ -157,7 +160,7 @@ static const struct file_operations globalmem_fops = {
 static void globalmem_setup_cdev(struct globalmem_dev *dev, int index)
 {
 	int err, devno = MKDEV(globalmem_major, index);
-
+	pr_info( "%s\n", __func__);
 	cdev_init(&dev->cdev, &globalmem_fops);
 	dev->cdev.owner = THIS_MODULE;
 	err = cdev_add(&dev->cdev, devno, 1);
@@ -170,7 +173,7 @@ static int __init globalmem_init(void)
 	int ret;
 	int i;
 	dev_t devno = MKDEV(globalmem_major, 0);
-
+	pr_info( "%s\n", __func__);
 	if (globalmem_major)
 		ret = register_chrdev_region(devno, DEVICE_NUM, "globalmem");
 	else {
@@ -200,6 +203,7 @@ module_init(globalmem_init);
 static void __exit globalmem_exit(void)
 {
 	int i;
+	pr_info( "%s\n", __func__);	
 	for (i = 0; i < DEVICE_NUM; i++)
 		cdev_del(&(globalmem_devp + i)->cdev);
 	kfree(globalmem_devp);
