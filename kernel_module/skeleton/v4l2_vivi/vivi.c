@@ -1345,7 +1345,7 @@ static int vidioc_s_ctrl(struct file *file, void *priv,
     will succeed. This is limited to the maximum number of devices that
     videodev supports, which is equal to VIDEO_NUM_DEVICES.
   */
- static int __init vivi_init(void)
+int  vivi_init(void)
  {
          const struct font_desc *font = find_font("VGA8x16");
          int ret = 0, i;
@@ -1385,12 +1385,8 @@ static int vidioc_s_ctrl(struct file *file, void *priv,
          return ret;
  }
  
- static void __exit vivi_exit(void)
+void vivi_exit(void)
  {
 	vivi_v4l2_printk("%s\n", __func__); 	
          vivi_release();
  }
- 
- module_init(vivi_init);
- module_exit(vivi_exit);
- 

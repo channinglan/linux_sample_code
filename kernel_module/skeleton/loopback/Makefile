@@ -3,9 +3,7 @@
 ifneq ($(KERNELRELEASE),)
 
 
-
-vivi_v4l2-objs	:= vivi.o module.o
-obj-m		:= vivi_v4l2.o
+obj-m		:= loopback.o
 
 else
 
